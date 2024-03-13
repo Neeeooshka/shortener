@@ -1,13 +1,14 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
+	"github.com/thanhpk/randstr"
 	"io"
 	"net/http"
-	"regexp"
+	"strings"
 )
+
+const hostUrl = "http://localhost:8080"
 
 type link struct {
 	shortLink string
@@ -19,6 +20,8 @@ type links []link
 func (l *links) addLink(sl, fl string) {
 	*l = append(*l, link{shortLink: sl, fullLink: fl})
 }
+
+var shortedLinks links
 
 func main() {
 	if err := runHTTPServer(); err != nil {
@@ -36,13 +39,6 @@ func runHTTPServer() error {
 
 func HTTPHandler(w http.ResponseWriter, r *http.Request) {
 
-	if r.Header.Get("Content-Type") != "text/plain" && r.Header.Get("Content-Type") != "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain")
-
 	switch r.Method {
 	case http.MethodPost:
 		endPointPOST(w, r)
@@ -57,6 +53,11 @@ func HTTPHandler(w http.ResponseWriter, r *http.Request) {
 // обработчик HTTP-запроса POST
 func endPointPOST(w http.ResponseWriter, r *http.Request) {
 
+	if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -64,61 +65,37 @@ func endPointPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shortLink, err := generateLink(string(body)); err == nil {
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprint(w, shortLink)
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, generateLink(string(body)))
+}
+
+// обработчик HTTP-запроса GET
+func endPointGET(w http.ResponseWriter, r *http.Request) {
+
+	rLink := hostUrl + r.URL.String()
+	if fullLink, ok := getFullLink(rLink); ok {
+		w.Header().Set("Location", fullLink)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-// обработчик HTTP-запроса GET
-func endPointGET(w http.ResponseWriter, r *http.Request) {
-
-	rLink := r.URL.String()
-
-	if match, err := regexp.MatchString("[A-Za-z0-9]", rLink); rLink != "/" && (err != nil || !match) {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var links = getLinks()
-
-	for _, l := range links {
-		if l.shortLink == rLink {
-			w.Header().Set("Location", l.fullLink)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			return
+func getFullLink(shortLink string) (string, bool) {
+	for _, l := range shortedLinks {
+		if l.shortLink == shortLink {
+			return l.fullLink, true
 		}
 	}
-
-	if r.URL.String() != "/" {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-}
-
-// имитация запроса к БД
-func getLinks() links {
-	var l links
-	l.addLink("/EwHXdJfB", "https://practicum.yandex.ru/")
-
-	return l
+	return "", false
 }
 
 // generate a short link
-func generateLink(shortLink string) (string, error) {
+func generateLink(fullLink string) string {
+	shortLink := hostUrl + "/" + randstr.Base62(8)
+	shortedLinks.addLink(shortLink, fullLink)
 
-	// имитация генерации ссылки
-	if shortLink == "https://practicum.yandex.ru/" {
-		return "EwHXdJfB", nil
-	}
-
-	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(b), nil
+	return shortLink
 }
