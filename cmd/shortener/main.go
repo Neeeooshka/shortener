@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const hostUrl = "http://localhost:8080"
+const hostURL = "http://localhost:8080"
 
 type link struct {
 	shortLink string
@@ -73,7 +73,7 @@ func endPointPOST(w http.ResponseWriter, r *http.Request) {
 // обработчик HTTP-запроса GET
 func endPointGET(w http.ResponseWriter, r *http.Request) {
 
-	rLink := hostUrl + r.URL.String()
+	rLink := hostURL + r.URL.String()
 	if fullLink, ok := getFullLink(rLink); ok {
 		w.Header().Set("Location", fullLink)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -94,7 +94,7 @@ func getFullLink(shortLink string) (string, bool) {
 
 // generate a short link
 func generateLink(fullLink string) string {
-	shortLink := hostUrl + "/" + randstr.Base62(8)
+	shortLink := hostURL + "/" + randstr.Base62(8)
 	shortedLinks.addLink(shortLink, fullLink)
 
 	return shortLink
