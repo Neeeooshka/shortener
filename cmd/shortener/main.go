@@ -1,101 +1,27 @@
 package main
 
 import (
-	"fmt"
-	"github.com/thanhpk/randstr"
-	"io"
+	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
+	"github.com/Neeeooshka/alice-skill.git/internal/server"
+	"log"
 	"net/http"
-	"strings"
 )
 
-const hostURL = "http://localhost:8080"
-
-type link struct {
-	shortLink string
-	fullLink  string
-}
-
-type links []link
-
-func (l *links) addLink(sl, fl string) {
-	*l = append(*l, link{shortLink: sl, fullLink: fl})
-}
-
-var shortedLinks links
-
 func main() {
-	if err := runHTTPServer(); err != nil {
-		panic(err)
-	}
-}
 
-// run HTTP server
-func runHTTPServer() error {
-	serverMux := http.NewServeMux()
-	serverMux.HandleFunc("/", HTTPHandler)
-	err := http.ListenAndServe(`:8080`, serverMux)
-	return err
-}
+	var sh []server.Handler
 
-func HTTPHandler(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-	case http.MethodPost:
-		endPointPOST(w, r)
-	case http.MethodGet:
-		endPointGET(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-}
-
-// обработчик HTTP-запроса POST
-func endPointPOST(w http.ResponseWriter, r *http.Request) {
-
-	if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, generateLink(string(body)))
-}
-
-// обработчик HTTP-запроса GET
-func endPointGET(w http.ResponseWriter, r *http.Request) {
-
-	rLink := hostURL + r.URL.String()
-	if fullLink, ok := getFullLink(rLink); ok {
-		w.Header().Set("Location", fullLink)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-		return
-	}
-
-	w.WriteHeader(http.StatusBadRequest)
-}
-
-func getFullLink(shortLink string) (string, bool) {
-	for _, l := range shortedLinks {
-		if l.shortLink == shortLink {
-			return l.fullLink, true
+	handlerShortener := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			handlers.EndPointPOST(w, r)
+		case http.MethodGet:
+			handlers.EndPointGET(w, r)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 	}
-	return "", false
-}
-
-// generate a short link
-func generateLink(fullLink string) string {
-	shortLink := hostURL + "/" + randstr.Base62(8)
-	shortedLinks.addLink(shortLink, fullLink)
-
-	return shortLink
+	sh = append(sh, server.Handler{Route: "/", Handler: handlerShortener})
+	log.Fatal(server.RunHTTPServer(sh))
 }
