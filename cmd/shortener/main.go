@@ -10,10 +10,8 @@ import (
 func main() {
 	router := chi.NewRouter()
 
-	router.Route("", func(r chi.Router) {
-		r.Post("/", handlers.EndPointPOST)
-		r.Get("/{id}", handlers.EndPointGET)
-	})
+	router.Post("/", handlers.EndPointPOST)
+	router.Get("/{id}", handlers.EndPointGET)
 
 	log.Fatal(http.ListenAndServe(`:8080`, router))
 }
