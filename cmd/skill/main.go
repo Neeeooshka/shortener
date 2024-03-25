@@ -3,14 +3,15 @@ package main
 
 import (
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
-	"github.com/Neeeooshka/alice-skill.git/internal/server"
+	"github.com/go-chi/chi/v5"
 	"log"
+	"net/http"
 )
 
 func main() {
+	router := chi.NewRouter()
+	router.Post("/", handlers.AliceSkill)
+	router.Get("/", handlers.AliceSkill)
 
-	var sh []server.Handler
-
-	sh = append(sh, server.Handler{Route: "/", Handler: handlers.AliceSkill})
-	log.Fatal(server.RunHTTPServer(sh))
+	log.Fatal(http.ListenAndServe(`:8080`, router))
 }

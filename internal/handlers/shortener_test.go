@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -36,9 +37,11 @@ func TestShortener(t *testing.T) {
 			shortedLink = w.Body.String()
 		})
 		// get full link from shorted
-		t.Run("expand link: "+shortedLink, func(t *testing.T) {
+		t.Run("expand link: "+tc.link, func(t *testing.T) {
+			u, err := url.Parse(shortedLink)
+			require.NoError(t, err)
 
-			r := httptest.NewRequest(http.MethodGet, shortedLink, nil)
+			r := httptest.NewRequest(http.MethodGet, u.RequestURI(), strings.NewReader(""))
 			w := httptest.NewRecorder()
 
 			EndPointGET(w, r)

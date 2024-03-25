@@ -15,12 +15,12 @@ var shortedLinks storage.Links
 
 // обработчик HTTP-запроса GET
 func EndPointGET(w http.ResponseWriter, r *http.Request) {
-	if idLink, ok := strings.CutPrefix(r.URL.Path, "/"); ok {
-		if fullLink, ok := shortedLinks.Get(idLink); ok {
-			w.Header().Set("Location", fullLink)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
+
+	rLink := hostURL + r.URL.String()
+	if fullLink, ok := shortedLinks.Get(rLink); ok {
+		w.Header().Set("Location", fullLink)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
@@ -41,15 +41,15 @@ func EndPointPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idLink := generateShortLink()
-	shortedLinks.Add(idLink, string(body))
+	shortLink := generateShortLink()
+	shortedLinks.Add(shortLink, string(body))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, hostURL+"/"+idLink)
+	fmt.Fprint(w, shortLink)
 }
 
 // generate a short link
 func generateShortLink() string {
-	return randstr.Base62(8)
+	return hostURL + "/" + randstr.Base62(8)
 }
