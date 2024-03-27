@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/Neeeooshka/alice-skill.git/cmd/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"github.com/thanhpk/randstr"
 	"io"
@@ -9,14 +10,13 @@ import (
 	"strings"
 )
 
-const hostURL = "http://localhost:8080"
-
 var shortedLinks storage.Links
 
 // обработчик HTTP-запроса GET
 func EndPointGET(w http.ResponseWriter, r *http.Request) {
 
-	rLink := hostURL + r.URL.String()
+	opt := config.GetOptions()
+	rLink := opt.GetShortLinkServer() + r.URL.String()
 	if fullLink, ok := shortedLinks.Get(rLink); ok {
 		w.Header().Set("Location", fullLink)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -51,5 +51,6 @@ func EndPointPOST(w http.ResponseWriter, r *http.Request) {
 
 // generate a short link
 func generateShortLink() string {
-	return hostURL + "/" + randstr.Base62(8)
+	opt := config.GetOptions()
+	return opt.GetShortLinkServer() + "/" + randstr.Base62(8)
 }
