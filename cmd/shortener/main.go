@@ -20,7 +20,7 @@ func main() {
 	var a, b string
 
 	flag.StringVar(&a, "a", opt.GetServer(), "Server address host:port")
-	flag.StringVar(&b, "b", "http://"+opt.GetShortLinkServer(), "Server ShortLink address protocol://host:port")
+	flag.StringVar(&b, "b", opt.GetShortLinkServer(), "Server ShortLink address protocol://host:port")
 	flag.Parse()
 
 	opt.SetServer(a)
