@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
 	"github.com/go-chi/chi/v5"
@@ -9,6 +10,8 @@ import (
 )
 
 func main() {
+
+	flag.Parse()
 
 	opt := config.GetOptions()
 	cnf := config.GetConfig()

@@ -88,7 +88,6 @@ func init() {
 	_ = flag.Value(&opt.BaseURL)
 	flag.Var(&opt.ServerAddress, "a", "Server address - host:port")
 	flag.Var(&opt.BaseURL, "b", "Server ShortLink Base address - protocol://host:port")
-	flag.Parse()
 }
 
 func GetOptions() *options {
