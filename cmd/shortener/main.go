@@ -24,6 +24,5 @@ func main() {
 	if cnf.ServerAddress != "" {
 		server = cnf.ServerAddress
 	}
-
 	log.Fatal(http.ListenAndServe(server, router))
 }

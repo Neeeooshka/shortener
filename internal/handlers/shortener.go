@@ -12,22 +12,22 @@ import (
 
 var shortedLinks storage.Links
 
-var baseURL string
-
-func init() {
+func getBaseURL() string {
 	opt := config.GetOptions()
 	cnf := config.GetConfig()
 
-	baseURL = opt.GetBaseURL()
+	baseURL := opt.GetBaseURL()
 	if cnf.BaseURL != "" {
 		baseURL = cnf.BaseURL
 	}
+
+	return baseURL
 }
 
 // обработчик HTTP-запроса GET
 func EndPointGET(w http.ResponseWriter, r *http.Request) {
 
-	rLink := baseURL + r.URL.String()
+	rLink := getBaseURL() + r.URL.String()
 	if fullLink, ok := shortedLinks.Get(rLink); ok {
 		w.Header().Set("Location", fullLink)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -62,5 +62,5 @@ func EndPointPOST(w http.ResponseWriter, r *http.Request) {
 
 // generate a short link
 func generateShortLink() string {
-	return baseURL + "/" + randstr.Base62(8)
+	return getBaseURL() + "/" + randstr.Base62(8)
 }
