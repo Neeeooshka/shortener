@@ -7,6 +7,7 @@ import (
 	"github.com/thanhpk/randstr"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -52,5 +53,6 @@ func EndPointPOST(w http.ResponseWriter, r *http.Request) {
 // generate a short link
 func generateShortLink() string {
 	opt := config.GetOptions()
+	fmt.Fprintln(os.Stdout, "opt is:", opt)
 	return opt.GetShortLinkServer() + "/" + randstr.Base62(8)
 }

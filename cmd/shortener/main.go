@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/Neeeooshka/alice-skill.git/cmd/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -25,6 +27,6 @@ func main() {
 
 	opt.SetServer(a)
 	opt.SetShortLinkServer(b)
-
+	fmt.Fprintln(os.Stdout, "opt is:", opt)
 	log.Fatal(http.ListenAndServe(opt.GetServer(), router))
 }

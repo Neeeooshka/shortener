@@ -77,10 +77,10 @@ func newOptions() *options {
 	}
 }
 
-func GetOptions() options {
+func GetOptions() *options {
 	if !opt.init() {
 		opt = *newOptions()
 	}
 
-	return opt
+	return &opt
 }
