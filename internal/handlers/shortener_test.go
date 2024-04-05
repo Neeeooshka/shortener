@@ -6,22 +6,37 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+const serverAddress = "localhost"
 
 func TestShortener(t *testing.T) {
 
 	testCases := []struct {
 		link string
+		id   string
+		port int
 	}{
-		{link: "https://ya.ru"},
-		{link: "https://google.com"},
+		{
+			link: "https://ya.ru",
+			id:   "JdHkDaPe",
+			port: 8080,
+		},
+		{
+			link: "https://google.com",
+			id:   "uErYlAmX",
+			port: 8888,
+		},
 	}
 
 	for _, tc := range testCases {
 
 		var shortedLink string
+
+		s := newShortener(tc.port, tc.id)
 
 		// get shorted link
 		t.Run("shorte link: "+tc.link, func(t *testing.T) {
@@ -30,7 +45,7 @@ func TestShortener(t *testing.T) {
 
 			r.Header.Set("Content-Type", "text/plain")
 
-			EndPointPOST(w, r)
+			GetShortenerHandler(&s)(w, r)
 
 			require.Equal(t, http.StatusCreated, w.Code)
 
@@ -44,10 +59,27 @@ func TestShortener(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, u.RequestURI(), strings.NewReader(""))
 			w := httptest.NewRecorder()
 
-			EndPointGET(w, r)
+			GetExpanderHandler(&s)(w, r)
 
 			require.Equal(t, http.StatusTemporaryRedirect, w.Code)
 			assert.Equal(t, w.Header().Get("Location"), tc.link)
 		})
 	}
+}
+
+type shortener struct {
+	port int
+	id   string
+}
+
+func (s *shortener) GetBaseURL() string {
+	return "http://" + serverAddress + ":" + strconv.Itoa(s.port)
+}
+
+func (s *shortener) GenerateShortLink() string {
+	return s.GetBaseURL() + "/" + s.id
+}
+
+func newShortener(port int, linkID string) shortener {
+	return shortener{port: port, id: linkID}
 }

@@ -1,6 +1,9 @@
 package handlers
 
-import "net/http"
+import (
+	"github.com/Neeeooshka/alice-skill.git/internal/logger"
+	"net/http"
+)
 
 func AliceSkill(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -18,4 +21,5 @@ func AliceSkill(w http.ResponseWriter, r *http.Request) {
         "version": "1.0"
       }
     `))
+	logger.Log.Debug("sending HTTP 200 response")
 }
