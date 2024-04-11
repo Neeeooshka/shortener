@@ -6,7 +6,7 @@ import (
 )
 
 // Возвращает обработчик HTTP-запроса POST для REST API
-func GetApiShortenHandler(s Shortener) http.HandlerFunc {
+func GetAPIShortenHandler(s Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
@@ -14,7 +14,7 @@ func GetApiShortenHandler(s Shortener) http.HandlerFunc {
 		}
 
 		var req struct {
-			Url string `json:"url"`
+			URL string `json:"url"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -23,7 +23,7 @@ func GetApiShortenHandler(s Shortener) http.HandlerFunc {
 		}
 
 		shortLink := s.GenerateShortLink()
-		shortedLinks.Add(shortLink, req.Url)
+		shortedLinks.Add(shortLink, req.URL)
 
 		resp := struct {
 			Result string `json:"result"`

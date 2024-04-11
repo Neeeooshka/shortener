@@ -14,7 +14,7 @@ import (
 func TestApiShorten(t *testing.T) {
 
 	type link struct {
-		Url         string `json:"url"`
+		URL         string `json:"url"`
 		ShortedLink string `json:"result"`
 	}
 
@@ -25,21 +25,21 @@ func TestApiShorten(t *testing.T) {
 	}{
 		{
 			link: link{
-				Url: "https://ya.ru",
+				URL: "https://ya.ru",
 			},
 			id:   "JdHkDaPe",
 			port: 8080,
 		},
 		{
 			link: link{
-				Url: "https://google.com",
+				URL: "https://google.com",
 			},
 			id:   "uErYlAmX",
 			port: 8888,
 		},
 		{
 			link: link{
-				Url: "https://practicum.yandex.ru",
+				URL: "https://practicum.yandex.ru",
 			},
 			id:   "lypxUyCp",
 			port: 8888,
@@ -51,7 +51,7 @@ func TestApiShorten(t *testing.T) {
 		s := newShortener(tc.port, tc.id)
 
 		// get shorted link
-		t.Run("shorte link: "+tc.link.Url, func(t *testing.T) {
+		t.Run("shorte link: "+tc.link.URL, func(t *testing.T) {
 
 			body := bytes.NewBuffer([]byte(""))
 			require.NoError(t, json.NewEncoder(body).Encode(&tc.link))
@@ -61,7 +61,7 @@ func TestApiShorten(t *testing.T) {
 
 			r.Header.Set("Content-Type", "application/json")
 
-			GetApiShortenHandler(&s)(w, r)
+			GetAPIShortenHandler(&s)(w, r)
 
 			require.Equal(t, http.StatusCreated, w.Code)
 			require.NoError(t, json.NewDecoder(w.Body).Decode(&tc.link))
@@ -77,7 +77,7 @@ func TestApiShorten(t *testing.T) {
 			GetExpanderHandler(&s)(w, r)
 
 			require.Equal(t, http.StatusTemporaryRedirect, w.Code)
-			assert.Equal(t, w.Header().Get("Location"), tc.link.Url)
+			assert.Equal(t, w.Header().Get("Location"), tc.link.URL)
 		})
 	}
 }
