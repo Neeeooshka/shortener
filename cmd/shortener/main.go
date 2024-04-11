@@ -23,6 +23,7 @@ func main() {
 	router := chi.NewRouter()
 	router.Post("/", logger.IncludeLogging(handlers.GetShortenerHandler(&sh), logrusLogger))
 	router.Get("/{id}", logger.IncludeLogging(handlers.GetExpanderHandler(&sh), logrusLogger))
+	router.Post("/api/shorten", logger.IncludeLogging(handlers.GetApiShortenHandler(&sh), logrusLogger))
 
 	// create HTTP Server
 	server := opt.GetServer()
