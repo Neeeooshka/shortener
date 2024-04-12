@@ -7,7 +7,7 @@ import (
 
 type (
 	Logger interface {
-		Log(rq RequestData, rs ResponseData)
+		Log(RequestData, ResponseData)
 	}
 
 	RequestData struct {
@@ -38,7 +38,7 @@ func (r *logging) WriteHeader(statusCode int) {
 	r.responseData.Status = statusCode
 }
 
-func IncludeLogging(h http.HandlerFunc, l Logger) http.HandlerFunc {
+func IncludeLogger(h http.HandlerFunc, l Logger) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
