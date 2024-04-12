@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/Neeeooshka/alice-skill.git/internal/compress"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
 	"github.com/Neeeooshka/alice-skill.git/internal/logger"
@@ -21,9 +22,12 @@ func main() {
 
 	// create router
 	router := chi.NewRouter()
-	router.Post("/", logger.IncludeLogging(handlers.GetShortenerHandler(&sh), logrusLogger))
-	router.Get("/{id}", logger.IncludeLogging(handlers.GetExpanderHandler(&sh), logrusLogger))
-	router.Post("/api/shorten", logger.IncludeLogging(handlers.GetAPIShortenHandler(&sh), logrusLogger))
+	router.Post("/", logger.IncludeLogger(handlers.GetShortenerHandler(&sh), logrusLogger))
+	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), logrusLogger))
+	router.Post(
+		"/api/shorten",
+		logger.IncludeLogger(compress.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), newGzipCompressor()), logrusLogger),
+	)
 
 	// create HTTP Server
 	server := opt.GetServer()
