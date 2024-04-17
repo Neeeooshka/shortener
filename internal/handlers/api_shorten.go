@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -18,6 +20,8 @@ func GetAPIShortenHandler(s Shortener) http.HandlerFunc {
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			fmt.Println(io.ReadAll(r.Body))
+			fmt.Println(req)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

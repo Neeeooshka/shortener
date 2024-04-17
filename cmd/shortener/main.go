@@ -19,13 +19,12 @@ func main() {
 	logrusLogger := newLogrusLogger(logrus.InfoLevel)
 
 	sh := newShortener(opt, cfg)
-	compressor := newGzipCompressor()
 
 	// create router
 	router := chi.NewRouter()
-	router.Post("/", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetShortenerHandler(&sh), compressor), logrusLogger))
-	router.Get("/{id}", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetExpanderHandler(&sh), compressor), logrusLogger))
-	router.Post("/api/shorten", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), compressor), logrusLogger))
+	router.Post("/", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetShortenerHandler(&sh), newGzipCompressor()), logrusLogger))
+	router.Post("/api/shorten", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), newGzipCompressor()), logrusLogger))
+	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), logrusLogger))
 
 	// create HTTP Server
 	server := opt.GetServer()

@@ -85,14 +85,14 @@ func IncludeCompressor(h http.HandlerFunc, c Compressor) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			cr.cr = r.Body
 			r.Body = cr
 			defer cr.Close()
 		}
 
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		if strings.Contains(acceptEncoding, c.GetEncoding()) {
-			w.Header().Set("Content-Type", "application/x-gzip")
+			w.Header().Set("Content-Type", "application/x-"+c.GetEncoding())
+			w.Header().Set("Content-Encoding", c.GetEncoding())
 			cw := newCompressorWriter(w, c)
 			ow = cw
 			defer cw.Close()
