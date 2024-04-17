@@ -5,7 +5,6 @@ import (
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"io"
 	"net/http"
-	"strings"
 )
 
 type Shortener interface {
@@ -33,11 +32,6 @@ func GetExpanderHandler(s Shortener) http.HandlerFunc {
 func GetShortenerHandler(s Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
 		body, err := io.ReadAll(r.Body)
 
 		if err != nil {
@@ -48,7 +42,10 @@ func GetShortenerHandler(s Shortener) http.HandlerFunc {
 		shortLink := s.GenerateShortLink()
 		shortedLinks.Add(shortLink, string(body))
 
-		w.Header().Set("Content-Type", "text/plain")
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", "text/plain")
+		}
+
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprint(w, shortLink)
 	}
