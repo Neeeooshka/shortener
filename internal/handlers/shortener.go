@@ -42,10 +42,6 @@ func GetShortenerHandler(s Shortener) http.HandlerFunc {
 		shortLink := s.GenerateShortLink()
 		shortedLinks.Add(shortLink, string(body))
 
-		if w.Header().Get("Content-Type") == "" {
-			w.Header().Set("Content-Type", "text/plain")
-		}
-
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprint(w, shortLink)
 	}
