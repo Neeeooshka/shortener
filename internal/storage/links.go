@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,20 +46,21 @@ func (l *Links) SetLinksFromFile() error {
 	if !l.useFile {
 		return errors.New("file storage is not include")
 	}
-	decoder := json.NewDecoder(&l.fileStorage)
-	for {
+
+	scanner := bufio.NewScanner(&l.fileStorage)
+	for scanner.Scan() {
 		link := link{}
-		if err := decoder.Decode(link); err == nil {
-			l.links = append(l.links, link)
-		} else {
-			break
+		if err := json.Unmarshal(scanner.Bytes(), link); err != nil {
+			continue
 		}
+		l.links = append(l.links, link)
 	}
+
 	if len(l.links) == 0 {
 		return errors.New("links were not imported from file")
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func NewLinksStorage(filename string) *Links {
