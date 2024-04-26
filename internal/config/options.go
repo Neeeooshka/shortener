@@ -10,6 +10,7 @@ import (
 type Options struct {
 	ServerAddress ServerAddress
 	BaseURL       BaseURL
+	FileStorage   FileStorage
 }
 
 func (o *Options) GetServer() string {
@@ -19,6 +20,8 @@ func (o *Options) GetServer() string {
 func (o *Options) GetBaseURL() string {
 	return o.BaseURL.String()
 }
+
+func (o *Options) GetFileStorage() string { return o.FileStorage.String() }
 
 type ServerAddress struct {
 	Host string
@@ -74,9 +77,28 @@ func (b *BaseURL) Set(flag string) error {
 	return nil
 }
 
+type FileStorage struct {
+	file string
+}
+
+func (f *FileStorage) String() string {
+	return f.file
+}
+
+func (f *FileStorage) Set(flag string) error {
+	f.file = flag
+	return nil
+}
+
 func NewOptions() Options {
-	return Options{
+
+	opt := Options{
 		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
 		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
+		FileStorage:   FileStorage{},
 	}
+
+	opt.FileStorage.Set("/tmp/short-url-db.json")
+
+	return opt
 }

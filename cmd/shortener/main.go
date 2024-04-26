@@ -14,11 +14,11 @@ import (
 
 func main() {
 
-	opt, cfg := getOptions()
+	opt := getOptions()
 
 	logrusLogger := newLogrusLogger(logrus.InfoLevel)
 
-	sh := newShortener(opt, cfg)
+	sh := newShortener(opt)
 
 	// create router
 	router := chi.NewRouter()
@@ -27,22 +27,32 @@ func main() {
 	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), logrusLogger))
 
 	// create HTTP Server
-	server := opt.GetServer()
-	if cfg.ServerAddress != "" {
-		server = cfg.ServerAddress
-	}
-	http.ListenAndServe(server, router)
+	http.ListenAndServe(opt.GetServer(), router)
 }
 
-// init options && config
-func getOptions() (config.Options, config.Config) {
+// init options
+func getOptions() config.Options {
 	opt := config.NewOptions()
 	cfg := config.NewConfig()
 
 	flag.Var(&opt.ServerAddress, "a", "Server address - host:port")
 	flag.Var(&opt.BaseURL, "b", "Server ShortLink Base address - protocol://host:port")
+	flag.Var(&opt.FileStorage, "f", "File storage path for shortlinks")
 
 	flag.Parse()
 	env.Parse(&cfg)
-	return opt, cfg
+
+	if cfg.ServerAddress != "" {
+		opt.ServerAddress.Set(cfg.ServerAddress)
+	}
+
+	if cfg.BaseURL != "" {
+		opt.BaseURL.Set(cfg.BaseURL)
+	}
+
+	if cfg.FileStorage != "" {
+		opt.FileStorage.Set(cfg.FileStorage)
+	}
+
+	return opt
 }

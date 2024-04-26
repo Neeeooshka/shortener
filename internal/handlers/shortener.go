@@ -10,6 +10,8 @@ import (
 type Shortener interface {
 	GetBaseURL() string
 	GenerateShortLink() string
+	Add(string, string)
+	Get(string) (string, bool)
 }
 
 var shortedLinks storage.Links
@@ -18,7 +20,7 @@ var shortedLinks storage.Links
 func GetExpanderHandler(s Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rLink := s.GetBaseURL() + r.URL.String()
-		if fullLink, ok := shortedLinks.Get(rLink); ok {
+		if fullLink, ok := s.Get(rLink); ok {
 			w.Header().Set("Location", fullLink)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
@@ -40,7 +42,7 @@ func GetShortenerHandler(s Shortener) http.HandlerFunc {
 		}
 
 		shortLink := s.GenerateShortLink()
-		shortedLinks.Add(shortLink, string(body))
+		s.Add(shortLink, string(body))
 
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprint(w, shortLink)

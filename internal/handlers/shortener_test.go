@@ -70,6 +70,7 @@ func TestShortener(t *testing.T) {
 type shortener struct {
 	port int
 	id   string
+	fl   string
 }
 
 func (s *shortener) GetBaseURL() string {
@@ -78,6 +79,14 @@ func (s *shortener) GetBaseURL() string {
 
 func (s *shortener) GenerateShortLink() string {
 	return s.GetBaseURL() + "/" + s.id
+}
+
+func (s *shortener) Add(sl, fl string) {
+	s.fl = fl
+	s.id = sl
+}
+func (s *shortener) Get(sl string) (string, bool) {
+	return s.GetBaseURL() + "/" + s.fl, true
 }
 
 func newShortener(port int, linkID string) shortener {

@@ -2,27 +2,27 @@ package main
 
 import (
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
+	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"github.com/thanhpk/randstr"
 )
 
 type shortener struct {
 	options config.Options
-	config  config.Config
+	storage storage.Links
 }
 
 func (s *shortener) GetBaseURL() string {
-	baseURL := s.options.GetBaseURL()
-	if s.config.BaseURL != "" {
-		baseURL = s.config.BaseURL
-	}
-
-	return baseURL
+	return s.options.GetBaseURL()
 }
 
 func (s *shortener) GenerateShortLink() string {
 	return s.GetBaseURL() + "/" + randstr.Base62(8)
 }
 
-func newShortener(opt config.Options, cfg config.Config) shortener {
-	return shortener{options: opt, config: cfg}
+func (s *shortener) Add(sl, fl string) { s.storage.Add(sl, fl) }
+
+func (s *shortener) Get(shortLink string) (string, bool) { return s.storage.Get(shortLink) }
+
+func newShortener(opt config.Options) shortener {
+	return shortener{options: opt, storage: *storage.NewLinksStorage(opt.GetFileStorage())}
 }
