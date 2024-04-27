@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 type link struct {
@@ -77,16 +75,8 @@ func NewLinksStorage(filename string) *Links {
 
 	var links = &Links{}
 
-	if filename != "" {
-		dir, filename := filepath.Split(filename)
-		if len(dir) > 0 && os.IsPathSeparator(dir[0]) {
-			dir, _ = strings.CutPrefix(dir, string(dir[0]))
-			os.MkdirAll(dir, 0666)
-			filename = dir + filename
-		}
-		links.fileStorage = filename
-		links.SetLinksFromFile()
-	}
+	links.fileStorage = filename
+	links.SetLinksFromFile()
 
 	return links
 }
