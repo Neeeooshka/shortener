@@ -78,7 +78,7 @@ func (s *shortener) GetBaseURL() string {
 }
 
 func (s *shortener) GenerateShortLink() string {
-	return s.GetBaseURL() + "/" + s.id
+	return s.id
 }
 
 func (s *shortener) Add(sl, fl string) {
@@ -86,7 +86,7 @@ func (s *shortener) Add(sl, fl string) {
 	s.id = sl
 }
 func (s *shortener) Get(sl string) (string, bool) {
-	return s.GetBaseURL() + "/" + s.fl, true
+	return s.fl, true
 }
 
 func newShortener(port int, linkID string) shortener {

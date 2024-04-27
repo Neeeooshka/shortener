@@ -10,7 +10,7 @@ import (
 )
 
 type link struct {
-	Uuid      uint   `json:"uuid"`
+	UUID      uint   `json:"uuid"`
 	ShortLink string `json:"short_url"`
 	FullLink  string `json:"original_url"`
 }
@@ -24,7 +24,7 @@ type Links struct {
 
 func (l *Links) Add(sl, fl string) {
 	uuid := uint(len(l.links))
-	newLink := link{ShortLink: sl, FullLink: fl, Uuid: uuid + 1}
+	newLink := link{ShortLink: sl, FullLink: fl, UUID: uuid + 1}
 	l.links = append(l.links, newLink)
 
 	if l.useFile {
