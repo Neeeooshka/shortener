@@ -5,6 +5,7 @@ import (
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type Shortener interface {
@@ -19,8 +20,8 @@ var shortedLinks storage.Links
 // Возвращает обработчик HTTP-запроса GET
 func GetExpanderHandler(s Shortener) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rLink := s.GetBaseURL() + r.URL.String()
-		if fullLink, ok := s.Get(rLink); ok {
+		link, _ := strings.CutPrefix(r.URL.String(), "/")
+		if fullLink, ok := s.Get(link); ok {
 			w.Header().Set("Location", fullLink)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			return
@@ -45,6 +46,6 @@ func GetShortenerHandler(s Shortener) http.HandlerFunc {
 		s.Add(shortLink, string(body))
 
 		w.WriteHeader(http.StatusCreated)
-		fmt.Fprint(w, shortLink)
+		fmt.Fprint(w, s.GetBaseURL()+"/"+shortLink)
 	}
 }

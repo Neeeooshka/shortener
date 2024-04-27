@@ -16,7 +16,7 @@ func (s *shortener) GetBaseURL() string {
 }
 
 func (s *shortener) GenerateShortLink() string {
-	return s.GetBaseURL() + "/" + randstr.Base62(8)
+	return randstr.Base62(8)
 }
 
 func (s *shortener) Add(sl, fl string) { s.storage.Add(sl, fl) }

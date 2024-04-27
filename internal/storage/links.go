@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +17,8 @@ type link struct {
 
 type Links struct {
 	links       []link
-	fileStorage os.File
+	fileStorage *os.File
+	encoder     *json.Encoder
 	useFile     bool
 }
 
@@ -28,8 +28,8 @@ func (l *Links) Add(sl, fl string) {
 	l.links = append(l.links, newLink)
 
 	if l.useFile {
-		err := json.NewEncoder(&l.fileStorage).Encode(newLink)
-		fmt.Println(err)
+		err := l.encoder.Encode(newLink)
+		_ = err
 	}
 }
 
@@ -47,10 +47,10 @@ func (l *Links) SetLinksFromFile() error {
 		return errors.New("file storage is not include")
 	}
 
-	scanner := bufio.NewScanner(&l.fileStorage)
+	scanner := bufio.NewScanner(l.fileStorage)
 	for scanner.Scan() {
 		link := link{}
-		if err := json.Unmarshal(scanner.Bytes(), link); err != nil {
+		if err := json.Unmarshal(scanner.Bytes(), &link); err != nil {
 			continue
 		}
 		l.links = append(l.links, link)
@@ -78,8 +78,9 @@ func NewLinksStorage(filename string) *Links {
 
 		if err == nil {
 			//defer file.Close()
-			links.fileStorage = *file
+			links.fileStorage = file
 			links.useFile = true
+			links.encoder = json.NewEncoder(links.fileStorage)
 			links.SetLinksFromFile()
 		}
 	}

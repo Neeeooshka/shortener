@@ -27,12 +27,12 @@ func GetAPIShortenHandler(s Shortener) http.HandlerFunc {
 		}
 
 		shortLink := s.GenerateShortLink()
-		shortedLinks.Add(shortLink, req.URL)
+		s.Add(shortLink, req.URL)
 
 		resp := struct {
 			Result string `json:"result"`
 		}{
-			Result: shortLink,
+			Result: s.GetBaseURL() + "/" + shortLink,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

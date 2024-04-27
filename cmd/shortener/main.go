@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-
 	opt := getOptions()
 
 	logrusLogger := newLogrusLogger(logrus.InfoLevel)
