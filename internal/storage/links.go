@@ -17,9 +17,7 @@ type link struct {
 
 type Links struct {
 	links       []link
-	fileStorage *os.File
-	encoder     *json.Encoder
-	useFile     bool
+	fileStorage string
 }
 
 func (l *Links) Add(sl, fl string) {
@@ -27,9 +25,13 @@ func (l *Links) Add(sl, fl string) {
 	newLink := link{ShortLink: sl, FullLink: fl, UUID: uuid + 1}
 	l.links = append(l.links, newLink)
 
-	if l.useFile {
-		err := l.encoder.Encode(newLink)
-		_ = err
+	if l.fileStorage != "" {
+		file, err := os.OpenFile(l.fileStorage, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+
+		if err == nil {
+			defer file.Close()
+			json.NewEncoder(file).Encode(newLink)
+		}
 	}
 }
 
@@ -43,11 +45,19 @@ func (l *Links) Get(shortLink string) (string, bool) {
 }
 
 func (l *Links) SetLinksFromFile() error {
-	if !l.useFile {
+	if l.fileStorage == "" {
 		return errors.New("file storage is not include")
 	}
 
-	scanner := bufio.NewScanner(l.fileStorage)
+	file, err := os.Open(l.fileStorage)
+
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		link := link{}
 		if err := json.Unmarshal(scanner.Bytes(), &link); err != nil {
@@ -74,15 +84,8 @@ func NewLinksStorage(filename string) *Links {
 			os.MkdirAll(dir, 0666)
 			filename = dir + filename
 		}
-		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-
-		if err == nil {
-			//defer file.Close()
-			links.fileStorage = file
-			links.useFile = true
-			links.encoder = json.NewEncoder(links.fileStorage)
-			links.SetLinksFromFile()
-		}
+		links.fileStorage = filename
+		links.SetLinksFromFile()
 	}
 
 	return links
