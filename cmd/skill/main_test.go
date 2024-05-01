@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	gz "github.com/Neeeooshka/alice-skill.git/internal/gzip"
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/go-resty/resty/v2"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestWebhook(t *testing.T) {
@@ -97,7 +98,7 @@ func TestWebhook(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	handler := http.HandlerFunc(gzipMiddleware(handlers.AliceSkill))
+	handler := http.HandlerFunc(compressor.IncludeCompressor(handlers.AliceSkill, gz.NewGzipCompressor()))
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
