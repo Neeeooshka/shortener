@@ -1,4 +1,4 @@
-package main
+package gzip
 
 import (
 	"compress/gzip"
@@ -22,7 +22,7 @@ func (c *gzipCompressor) GetEncoding() string {
 	return c.encoding
 }
 
-func newGzipCompressor() *gzipCompressor {
+func NewGzipCompressor() *gzipCompressor {
 	return &gzipCompressor{
 		encoding: "gzip",
 	}

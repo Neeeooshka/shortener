@@ -39,7 +39,7 @@ func (r *logging) WriteHeader(statusCode int) {
 }
 
 func IncludeLogger(h http.HandlerFunc, l Logger) http.HandlerFunc {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		responseData := &ResponseData{
@@ -53,12 +53,11 @@ func IncludeLogger(h http.HandlerFunc, l Logger) http.HandlerFunc {
 		}
 		h.ServeHTTP(&lw, r)
 
-		requestData := &RequestData{
+		requestData := RequestData{
 			URI:      r.RequestURI,
 			Method:   r.Method,
 			Duration: time.Since(start),
 		}
-		l.Log(*requestData, *responseData)
+		l.Log(requestData, *responseData)
 	}
-	return logFn
 }

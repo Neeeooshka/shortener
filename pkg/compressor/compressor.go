@@ -1,4 +1,4 @@
-package compress
+package compressor
 
 import (
 	"io"
@@ -62,7 +62,7 @@ func newCompressorReader(r io.ReadCloser, c Compressor) (*compressorReader, erro
 		cr: cr,
 	}, nil
 }
-func (c compressorReader) Read(p []byte) (n int, err error) {
+func (c *compressorReader) Read(p []byte) (n int, err error) {
 	return c.cr.Read(p)
 }
 

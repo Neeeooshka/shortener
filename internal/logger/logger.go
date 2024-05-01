@@ -1,9 +1,8 @@
 package logger
 
 import (
-	"net/http"
-
 	"go.uber.org/zap"
+	"net/http"
 )
 
 // Log будет доступен всему коду как синглтон.

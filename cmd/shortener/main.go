@@ -2,28 +2,47 @@ package main
 
 import (
 	"flag"
-	"github.com/Neeeooshka/alice-skill.git/internal/compress"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
+	"github.com/Neeeooshka/alice-skill.git/internal/gzip"
 	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
 	"github.com/Neeeooshka/alice-skill.git/internal/logger"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"net/http"
 )
+
+type zapLogger struct {
+	logger *zap.Logger
+}
+
+func (l *zapLogger) Log(rq logger.RequestData, rs logger.ResponseData) {
+	l.logger.Debug("receive new request",
+		zap.String("URI", rq.URI),
+		zap.String("method", rq.Method),
+		zap.Duration("duration", rq.Duration),
+		zap.Int("status", rs.Status),
+		zap.Int("size", rs.Size),
+	)
+}
 
 func main() {
 	opt := getOptions()
 
-	logrusLogger := newLogrusLogger(logrus.InfoLevel)
+	if err := logger.Initialize("info"); err != nil {
+		panic(err)
+	}
+
+	zapLoger := &zapLogger{logger: logger.Log}
 
 	sh := newShortener(opt)
 
 	// create router
 	router := chi.NewRouter()
-	router.Post("/", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetShortenerHandler(&sh), newGzipCompressor()), logrusLogger))
-	router.Post("/api/shorten", logger.IncludeLogger(compress.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), newGzipCompressor()), logrusLogger))
-	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), logrusLogger))
+	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(handlers.GetShortenerHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
+	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
+	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), zapLoger))
 
 	// create HTTP Server
 	http.ListenAndServe(opt.GetServer(), router)
