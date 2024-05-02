@@ -32,6 +32,26 @@ func AliceSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	text := "Для вас нет новых сообщений."
+
+	// первый запрос новой сессии
+	if req.Session.New {
+		// обрабатываем поле Timezone запроса
+		tz, err := time.LoadLocation(req.Timezone)
+		if err != nil {
+			log.Debug("cannot parse timezone")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		// получаем текущее время в часовом поясе пользователя
+		now := time.Now().In(tz)
+		hour, minute, _ := now.Clock()
+
+		// формируем текст ответа
+		text = fmt.Sprintf("Точное время %d часов, %d минут. %s", hour, minute, text)
+	}
+
 	// заполняем модель ответа
 	resp := models.Response{
 		Response: models.ResponsePayload{
