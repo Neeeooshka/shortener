@@ -2,32 +2,36 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/Neeeooshka/alice-skill.git/internal/logger"
+	"fmt"
 	"github.com/Neeeooshka/alice-skill.git/internal/models"
-	"go.uber.org/zap"
+	"github.com/Neeeooshka/alice-skill.git/internal/zap"
 	"net/http"
+	"time"
 )
 
 func AliceSkill(w http.ResponseWriter, r *http.Request) {
+
+	log := zap.Log
+
 	if r.Method != http.MethodPost {
-		logger.Log.Debug("got request with bad method", zap.String("method", r.Method))
+		log.Debug("got request with bad method", log.String("method", r.Method))
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
 	// десериализуем запрос в структуру модели
-	logger.Log.Debug("decoding request")
+	log.Debug("decoding request")
 	var req models.Request
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
-		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+		log.Debug("cannot decode request JSON body", log.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// проверяем, что пришёл запрос понятного типа
 	if req.Request.Type != models.TypeSimpleUtterance {
-		logger.Log.Debug("unsupported request type", zap.String("type", req.Request.Type))
+		log.Debug("unsupported request type", log.String("type", req.Request.Type))
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
@@ -55,7 +59,7 @@ func AliceSkill(w http.ResponseWriter, r *http.Request) {
 	// заполняем модель ответа
 	resp := models.Response{
 		Response: models.ResponsePayload{
-			Text: "Извините, я пока ничего не умею",
+			Text: text, // Алиса проговорит новый текст
 		},
 		Version: "1.0",
 	}
@@ -65,8 +69,8 @@ func AliceSkill(w http.ResponseWriter, r *http.Request) {
 	// сериализуем ответ сервера
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(resp); err != nil {
-		logger.Log.Debug("error encoding response", zap.Error(err))
+		log.Debug("error encoding response", log.Error(err))
 		return
 	}
-	logger.Log.Debug("sending HTTP 200 response")
+	log.Debug("sending HTTP 200 response")
 }
