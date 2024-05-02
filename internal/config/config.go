@@ -1,20 +1,11 @@
 package config
 
-import (
-	"github.com/caarlos0/env/v6"
-)
-
-var cfg config
-
-type config struct {
+type Config struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
 	BaseURL       string `env:"BASE_URL"`
+	FileStorage   string `env:"FILE_STORAGE_PATH"`
 }
 
-func init() {
-	env.Parse(&cfg)
-}
-
-func GetConfig() *config {
-	return &cfg
+func NewConfig() Config {
+	return Config{}
 }

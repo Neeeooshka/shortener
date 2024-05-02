@@ -2,37 +2,37 @@ package config
 
 import (
 	"errors"
-	"flag"
 	"net/url"
 	"strconv"
 	"strings"
 )
 
-var opt options
-
-type options struct {
-	ServerAddress serverAddress
+type Options struct {
+	ServerAddress ServerAddress
 	BaseURL       BaseURL
+	FileStorage   FileStorage
 }
 
-func (o *options) GetServer() string {
-	return opt.ServerAddress.String()
+func (o *Options) GetServer() string {
+	return o.ServerAddress.String()
 }
 
-func (o *options) GetBaseURL() string {
-	return opt.BaseURL.String()
+func (o *Options) GetBaseURL() string {
+	return o.BaseURL.String()
 }
 
-type serverAddress struct {
+func (o *Options) GetFileStorage() string { return o.FileStorage.String() }
+
+type ServerAddress struct {
 	Host string
 	Port int
 }
 
-func (s *serverAddress) String() string {
+func (s *ServerAddress) String() string {
 	return s.Host + ":" + strconv.Itoa(s.Port)
 }
 
-func (s *serverAddress) Set(flag string) error {
+func (s *ServerAddress) Set(flag string) error {
 
 	ss := strings.Split(flag, ":")
 
@@ -77,19 +77,28 @@ func (b *BaseURL) Set(flag string) error {
 	return nil
 }
 
-func init() {
-	// default values
-	opt.ServerAddress.Host = "localhost"
-	opt.ServerAddress.Port = 8080
-	opt.BaseURL.Host = "localhost"
-	opt.BaseURL.Port = 8080
-
-	_ = flag.Value(&opt.ServerAddress)
-	_ = flag.Value(&opt.BaseURL)
-	flag.Var(&opt.ServerAddress, "a", "Server address - host:port")
-	flag.Var(&opt.BaseURL, "b", "Server ShortLink Base address - protocol://host:port")
+type FileStorage struct {
+	file string
 }
 
-func GetOptions() *options {
-	return &opt
+func (f *FileStorage) String() string {
+	return f.file
+}
+
+func (f *FileStorage) Set(flag string) error {
+	f.file = flag
+	return nil
+}
+
+func NewOptions() Options {
+
+	opt := Options{
+		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
+		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
+		FileStorage:   FileStorage{},
+	}
+
+	opt.FileStorage.Set("/tmp/short-url-db.json")
+
+	return opt
 }
