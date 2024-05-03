@@ -4,19 +4,43 @@ import (
 	"bytes"
 	"compress/gzip"
 	gz "github.com/Neeeooshka/alice-skill.git/internal/gzip"
-	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
+	"github.com/Neeeooshka/alice-skill.git/internal/store"
+	"github.com/Neeeooshka/alice-skill.git/internal/store/mock"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
 	"github.com/go-resty/resty/v2"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestWebhook(t *testing.T) {
-	handler := http.HandlerFunc(handlers.AliceSkill)
+	// создадим конроллер моков и экземпляр мок-хранилища
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockStore(ctrl)
+
+	// определим, какой результат будем получать от «хранилища»
+	messages := []store.Message{
+		{
+			Sender:  "411419e5-f5be-4cdb-83aa-2ca2b6648353",
+			Time:    time.Now(),
+			Payload: "Hello!",
+		},
+	}
+
+	// установим условие: при любом вызове метода ListMessages возвращать массив messages без ошибки
+	s.EXPECT().
+		ListMessages(gomock.Any(), gomock.Any()).
+		Return(messages, nil)
+
+	// создадим экземпляр приложения и передадим ему «хранилище»
+	appInstance := newApp(s)
+
+	handler := http.HandlerFunc(appInstance.AliceSkill)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -63,7 +87,7 @@ func TestWebhook(t *testing.T) {
 			method:       http.MethodPost,
 			body:         `{"request": {"type": "SimpleUtterance", "command": "sudo do something"}, "session": {"new": true}, "version": "1.0"}`,
 			expectedCode: http.StatusOK,
-			expectedBody: `Точное время .* часов, .* минут. Для вас нет новых сообщений.`,
+			expectedBody: `Точное время .* часов, .* минут. Для вас 1 новых сообщений.`,
 		},
 	}
 
@@ -92,15 +116,36 @@ func TestWebhook(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	handler := http.HandlerFunc(compressor.IncludeCompressor(handlers.AliceSkill, gz.NewGzipCompressor()))
+	// создадим конроллер моков и экземпляр мок-хранилища
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockStore(ctrl)
 
+	// определим, какой результат будем получать от «хранилища»
+	messages := []store.Message{
+		{
+			Sender:  "411419e5-f5be-4cdb-83aa-2ca2b6648353",
+			Time:    time.Now(),
+			Payload: "Hello!",
+		},
+	}
+
+	// установим условие: при любом вызове метода ListMessages возвращать массив messages без ошибки
+	s.EXPECT().
+		ListMessages(gomock.Any(), gomock.Any()).
+		Return(messages, nil).
+		MaxTimes(2)
+
+	// создадим экземпляр приложения и передадим ему «хранилище»
+	appInstance := newApp(s)
+
+	handler := http.HandlerFunc(compressor.IncludeCompressor(appInstance.AliceSkill, gz.NewGzipCompressor()))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	requestBody := `{"request": {"type": "SimpleUtterance", "command": "sudo do something"}, "session": {"new": true}, "version": "1.0"}`
 
 	// ожидаемое содержимое тела ответа при успешном запросе
-	successBody := `Точное время .* часов, .* минут. Для вас нет новых сообщений.`
+	successBody := `Точное время .* часов, .* минут. Для вас 1 новых сообщений.`
 
 	t.Run("sends_gzip", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)

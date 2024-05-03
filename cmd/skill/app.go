@@ -1,16 +1,28 @@
-package handlers
+package main
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Neeeooshka/alice-skill.git/internal/models"
-	"github.com/Neeeooshka/alice-skill.git/internal/zap"
 	"net/http"
 	"time"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/models"
+	"github.com/Neeeooshka/alice-skill.git/internal/store"
+	"github.com/Neeeooshka/alice-skill.git/internal/zap"
 )
 
-func AliceSkill(w http.ResponseWriter, r *http.Request) {
+// app инкапсулирует в себя все зависимости и логику приложения
+type app struct {
+	store store.Store
+}
 
+// newApp принимает на вход внешние зависимости приложения и возвращает новый объект app
+func newApp(s store.Store) *app {
+	return &app{store: s}
+}
+
+func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	log := zap.Log
 
 	if r.Method != http.MethodPost {
@@ -36,7 +48,18 @@ func AliceSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// получаем список сообщений для текущего пользователя
+	messages, err := a.store.ListMessages(ctx, req.Session.User.UserID)
+	if err != nil {
+		log.Debug("cannot load messages for user", log.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	text := "Для вас нет новых сообщений."
+	if len(messages) > 0 {
+		text = fmt.Sprintf("Для вас %d новых сообщений.", len(messages))
+	}
 
 	// первый запрос новой сессии
 	if req.Session.New {
