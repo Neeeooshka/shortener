@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"net/http"
 	"time"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/models"
 	"github.com/Neeeooshka/alice-skill.git/internal/store"
-	"github.com/Neeeooshka/alice-skill.git/internal/zap"
 )
 
 // app инкапсулирует в себя все зависимости и логику приложения

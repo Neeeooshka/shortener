@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
-	"github.com/Neeeooshka/alice-skill.git/internal/gzip"
-	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
-	"github.com/Neeeooshka/alice-skill.git/internal/zap"
+	storage "github.com/Neeeooshka/alice-skill.git/internal/storage/file"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
-	logger2 "github.com/Neeeooshka/alice-skill.git/pkg/logger"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
+	logger "github.com/Neeeooshka/alice-skill.git/pkg/logger"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -15,20 +15,23 @@ import (
 
 func main() {
 	opt := getOptions()
-
 	zapLoger, err := zap.NewZapLogger("info")
-
 	if err != nil {
 		panic(err)
 	}
-
-	sh := newShortener(opt)
+	sqlStorage, err := storage.NewPostgresLinksStorage(opt.DB.String())
+	if err != nil {
+		panic(err)
+	}
+	fileStorage := storage.NewFileLinksStorage(opt.FileStorage.String())
+	appInstance := newAppInstance(opt, fileStorage)
 
 	// create router
 	router := chi.NewRouter()
-	router.Post("/", logger2.IncludeLogger(compressor.IncludeCompressor(handlers.GetShortenerHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
-	router.Post("/api/shorten", logger2.IncludeLogger(compressor.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
-	router.Get("/{id}", logger2.IncludeLogger(handlers.GetExpanderHandler(&sh), zapLoger))
+	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.ShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
+	router.Get("/ping", logger.IncludeLogger(sqlStorage.PingHandler, zapLoger))
 
 	// create HTTP Server
 	http.ListenAndServe(opt.GetServer(), router)
@@ -42,6 +45,7 @@ func getOptions() config.Options {
 	flag.Var(&opt.ServerAddress, "a", "Server address - host:port")
 	flag.Var(&opt.BaseURL, "b", "Server ShortLink Base address - protocol://host:port")
 	flag.Var(&opt.FileStorage, "f", "File storage path for shortlinks")
+	flag.Var(&opt.DB, "d", "postrgres connection string")
 
 	flag.Parse()
 	env.Parse(&cfg)
@@ -56,6 +60,10 @@ func getOptions() config.Options {
 
 	if cfg.FileStorage != "" {
 		opt.FileStorage.Set(cfg.FileStorage)
+	}
+
+	if cfg.DB != "" {
+		opt.DB.Set(cfg.DB)
 	}
 
 	return opt

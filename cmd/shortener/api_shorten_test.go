@@ -1,4 +1,4 @@
-package handlers
+package main
 
 import (
 	"bytes"
@@ -61,7 +61,7 @@ func TestApiShorten(t *testing.T) {
 
 			r.Header.Set("Content-Type", "application/json")
 
-			GetAPIShortenHandler(&s)(w, r)
+			s.app.APIShortenerHandler(w, r)
 
 			require.Equal(t, http.StatusCreated, w.Code)
 			require.NoError(t, json.NewDecoder(w.Body).Decode(&tc.link))
@@ -74,7 +74,7 @@ func TestApiShorten(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, u.RequestURI(), nil)
 			w := httptest.NewRecorder()
 
-			GetExpanderHandler(&s)(w, r)
+			s.app.ExpanderHandler(w, r)
 
 			require.Equal(t, http.StatusTemporaryRedirect, w.Code)
 			assert.Equal(t, w.Header().Get("Location"), tc.link.URL)

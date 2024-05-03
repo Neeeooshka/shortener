@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	gz "github.com/Neeeooshka/alice-skill.git/internal/gzip"
 	"github.com/Neeeooshka/alice-skill.git/internal/store"
 	"github.com/Neeeooshka/alice-skill.git/internal/store/mock"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
+	gz "github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

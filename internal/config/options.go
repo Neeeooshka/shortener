@@ -11,6 +11,7 @@ type Options struct {
 	ServerAddress ServerAddress
 	BaseURL       BaseURL
 	FileStorage   FileStorage
+	DB            DB
 }
 
 func (o *Options) GetServer() string {
@@ -90,15 +91,27 @@ func (f *FileStorage) Set(flag string) error {
 	return nil
 }
 
+type DB struct {
+	db string
+}
+
+func (d *DB) String() string {
+	return d.db
+}
+
+func (d *DB) Set(flag string) error {
+	d.db = flag
+	return nil
+}
+
 func NewOptions() Options {
 
 	opt := Options{
 		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
 		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
-		FileStorage:   FileStorage{},
+		FileStorage:   FileStorage{file: "/tmp/short-url-db.json"},
+		DB:            DB{db: "host=localhost user=shortener password=shortener dbname=shortener"},
 	}
-
-	opt.FileStorage.Set("/tmp/short-url-db.json")
 
 	return opt
 }

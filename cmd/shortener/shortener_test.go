@@ -1,4 +1,4 @@
-package handlers
+package main
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -45,7 +45,7 @@ func TestShortener(t *testing.T) {
 
 			r.Header.Set("Content-Type", "text/plain")
 
-			GetShortenerHandler(&s)(w, r)
+			s.app.ShortenerHandler(w, r)
 
 			require.Equal(t, http.StatusCreated, w.Code)
 
@@ -59,7 +59,7 @@ func TestShortener(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, u.RequestURI(), strings.NewReader(""))
 			w := httptest.NewRecorder()
 
-			GetExpanderHandler(&s)(w, r)
+			s.app.ExpanderHandler(w, r)
 
 			require.Equal(t, http.StatusTemporaryRedirect, w.Code)
 			assert.Equal(t, w.Header().Get("Location"), tc.link)
@@ -71,6 +71,7 @@ type shortener struct {
 	port int
 	id   string
 	fl   string
+	app  app
 }
 
 func (s *shortener) GetBaseURL() string {
@@ -90,5 +91,5 @@ func (s *shortener) Get(sl string) (string, bool) {
 }
 
 func newShortener(port int, linkID string) shortener {
-	return shortener{port: port, id: linkID}
+	return shortener{port: port, id: linkID, app: app{}}
 }
