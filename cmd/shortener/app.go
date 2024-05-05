@@ -27,6 +27,7 @@ func (a *app) GenerateShortLink() string {
 func newAppInstance(opt config.Options, s storage.LinkStorage) *app {
 	return &app{options: opt, storage: s}
 }
+
 func (a *app) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
 	link, _ := strings.CutPrefix(r.URL.String(), "/")
 	if fullLink, ok := a.storage.Get(link); ok {
