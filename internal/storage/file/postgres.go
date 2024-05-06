@@ -2,12 +2,12 @@ package storage
 
 import (
 	"database/sql"
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"net/http"
 )
 
 type Postgres struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 func (l *Postgres) Add(sl, fl string) error {
@@ -19,7 +19,7 @@ func (l *Postgres) Get(shortLink string) (string, bool) {
 }
 
 func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
-	err := l.db.Ping()
+	err := l.DB.Ping()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -27,11 +27,10 @@ func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func NewPostgresLinksStorage(conn string) (*Postgres, error) {
-	db, err := sql.Open("pgx", conn)
+	DB, err := sql.Open("pgx", conn)
 	if err != nil {
 		return &Postgres{}, err
 	}
-	defer db.Close()
 
-	return &Postgres{db: db}, nil
+	return &Postgres{DB: DB}, nil
 }

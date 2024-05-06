@@ -27,7 +27,7 @@ func (l *zapLogger) init(level string) error {
 }
 
 func (l *zapLogger) Log(rq logger.RequestData, rs logger.ResponseData) {
-	l.logger.Debug("receive new request",
+	l.logger.Info("receive new request",
 		zap.String("URI", rq.URI),
 		zap.String("method", rq.Method),
 		zap.Duration("duration", rq.Duration),
@@ -52,6 +52,6 @@ func (l *zapLogger) Info(msg string, fields ...zap.Field) {
 	l.logger.Info(msg, fields...)
 }
 
-func NewZapLogger(level string) (z *zapLogger, err error) {
+func NewZapLogger(level string) (*zapLogger, error) {
 	return Log, Log.init(level)
 }

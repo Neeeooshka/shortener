@@ -14,15 +14,20 @@ import (
 )
 
 func main() {
+
 	opt := getOptions()
+
 	zapLoger, err := zap.NewZapLogger("info")
 	if err != nil {
 		panic(err)
 	}
+
 	sqlStorage, err := storage.NewPostgresLinksStorage(opt.DB.String())
 	if err != nil {
 		panic(err)
 	}
+	defer sqlStorage.DB.Close()
+
 	fileStorage := storage.NewFileLinksStorage(opt.FileStorage.String())
 	appInstance := newAppInstance(opt, fileStorage)
 
