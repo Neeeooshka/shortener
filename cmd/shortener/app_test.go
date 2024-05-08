@@ -117,7 +117,6 @@ func (a *app) setMockShortLink(t *testing.T, URL string) {
 
 	s.EXPECT().Add(gomock.Any(), URL).Return(nil)
 	s.EXPECT().Get(gomock.Any()).Return(URL, true)
-	s.EXPECT().Close().Return(nil)
 
 	a.storage = s
 }
