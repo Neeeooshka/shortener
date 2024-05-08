@@ -104,14 +104,11 @@ func (d *DB) Set(flag string) error {
 	return nil
 }
 
-func NewOptions() Options {
-
-	opt := Options{
+func NewOptions() *Options {
+	return &Options{
 		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
 		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
-		FileStorage:   FileStorage{file: "/tmp/short-url-db.json"},
-		DB:            DB{db: "host=localhost user=shortener password=shortener dbname=shortener"},
+		FileStorage:   FileStorage{},
+		DB:            DB{},
 	}
-
-	return opt
 }

@@ -1,8 +1,12 @@
 package storage
 
+import "net/http"
+
 type LinkStorage interface {
 	Add(sl, fl string) error
 	Get(shortLink string) (string, bool)
+	Close() error
+	PingHandler(http.ResponseWriter, *http.Request)
 }
 
 type Link struct {

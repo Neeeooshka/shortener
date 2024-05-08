@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
-	storage "github.com/Neeeooshka/alice-skill.git/internal/storage/file"
+	"github.com/Neeeooshka/alice-skill.git/internal/storage"
+	file "github.com/Neeeooshka/alice-skill.git/internal/storage/file"
+	postgres "github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
-	logger "github.com/Neeeooshka/alice-skill.git/pkg/logger"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger"
 	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
@@ -22,21 +24,25 @@ func main() {
 		panic(err)
 	}
 
-	sqlStorage, err := storage.NewPostgresLinksStorage(opt.DB.String())
-	if err != nil {
-		panic(err)
+	var store storage.LinkStorage
+	defer store.Close()
+	if opt.DB.String() != "" {
+		store, err = postgres.NewPostgresLinksStorage(opt.DB.String())
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		store, err = file.NewFileLinksStorage(opt.FileStorage.String())
 	}
-	defer sqlStorage.DB.Close()
 
-	fileStorage := storage.NewFileLinksStorage(opt.FileStorage.String())
-	appInstance := newAppInstance(opt, fileStorage)
+	appInstance := newAppInstance(opt, store)
 
 	// create router
 	router := chi.NewRouter()
 	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.ShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
 	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
 	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
-	router.Get("/ping", logger.IncludeLogger(sqlStorage.PingHandler, zapLoger))
+	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
 
 	// create HTTP Server
 	http.ListenAndServe(opt.GetServer(), router)

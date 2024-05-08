@@ -5,30 +5,25 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
+	"net/http"
 	"os"
 )
 
 type Links struct {
 	links       []storage.Link
-	fileStorage string
+	fileStorage *os.File
 }
 
-func (l *Links) Add(sl, fl string) error {
+func (l *Links) Add(sl, fl string) (err error) {
 	uuid := uint(len(l.links))
 	newLink := storage.Link{ShortLink: sl, FullLink: fl, UUID: uuid + 1}
 	l.links = append(l.links, newLink)
 
-	if l.fileStorage != "" {
-		file, err := os.OpenFile(l.fileStorage, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return err
-		}
-
-		defer file.Close()
-		json.NewEncoder(file).Encode(newLink)
+	if l.fileStorage != nil {
+		err = json.NewEncoder(l.fileStorage).Encode(newLink)
 	}
 
-	return nil
+	return err
 }
 
 func (l *Links) Get(shortLink string) (string, bool) {
@@ -40,12 +35,26 @@ func (l *Links) Get(shortLink string) (string, bool) {
 	return "", false
 }
 
-func (l *Links) SetLinksFromFile() error {
-	if l.fileStorage == "" {
-		return errors.New("file storage is not include")
+func (l *Links) Close() error {
+	return l.fileStorage.Close()
+}
+
+func (l *Links) PingHandler(w http.ResponseWriter, r *http.Request) {
+
+	if l.fileStorage == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	file, err := os.Open(l.fileStorage)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (l *Links) SetLinksFromFile(filename string) error {
+	if filename == "" {
+		return errors.New("the param filename is not set")
+	}
+
+	file, err := os.Open(filename)
 
 	if err != nil {
 		return err
@@ -69,12 +78,12 @@ func (l *Links) SetLinksFromFile() error {
 	return nil
 }
 
-func NewFileLinksStorage(filename string) *Links {
+func NewFileLinksStorage(filename string) (links *Links, err error) {
 
-	var links = &Links{}
+	if filename != "" {
+		err = links.SetLinksFromFile(filename)
+		links.fileStorage, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	}
 
-	links.fileStorage = filename
-	links.SetLinksFromFile()
-
-	return links
+	return links, err
 }
