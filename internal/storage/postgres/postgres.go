@@ -47,6 +47,9 @@ func (l *Postgres) initStructForLinks() (err error) {
 }
 
 func NewPostgresLinksStorage(conn string) (pgx *Postgres, err error) {
+
+	pgx = &Postgres{}
+
 	pgx.DB, err = sql.Open("pgx", conn)
 	if err != nil {
 		return nil, err

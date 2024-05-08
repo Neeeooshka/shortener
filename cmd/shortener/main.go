@@ -25,15 +25,15 @@ func main() {
 	}
 
 	var store storage.LinkStorage
-	defer store.Close()
 	if opt.DB.String() != "" {
 		store, err = postgres.NewPostgresLinksStorage(opt.DB.String())
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		store, err = file.NewFileLinksStorage(opt.FileStorage.String())
+		store, _ = file.NewFileLinksStorage(opt.FileStorage.String())
 	}
+	defer store.Close()
 
 	appInstance := newAppInstance(opt, store)
 

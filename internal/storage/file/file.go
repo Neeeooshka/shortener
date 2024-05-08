@@ -80,8 +80,10 @@ func (l *Links) SetLinksFromFile(filename string) error {
 
 func NewFileLinksStorage(filename string) (links *Links, err error) {
 
+	links = &Links{}
+
 	if filename != "" {
-		err = links.SetLinksFromFile(filename)
+		_ = links.SetLinksFromFile(filename)
 		links.fileStorage, err = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	}
 
