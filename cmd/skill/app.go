@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/models"
@@ -48,35 +49,100 @@ func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// получаем список сообщений для текущего пользователя
-	messages, err := a.store.ListMessages(ctx, req.Session.User.UserID)
-	if err != nil {
-		log.Debug("cannot load messages for user", log.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	// текст ответа навыка
+	var text string
 
-	text := "Для вас нет новых сообщений."
-	if len(messages) > 0 {
-		text = fmt.Sprintf("Для вас %d новых сообщений.", len(messages))
-	}
+	switch true {
+	// пользователь попросил отправить сообщение
+	case strings.HasPrefix(req.Request.Command, "Отправь"):
+		// гипотетическая функция parseSendCommand вычленит из запроса логин адресата и текст сообщения
+		username, message := parseSendCommand(req.Request.Command)
 
-	// первый запрос новой сессии
-	if req.Session.New {
-		// обрабатываем поле Timezone запроса
-		tz, err := time.LoadLocation(req.Timezone)
+		// найдём внутренний идентификатор адресата по его логину
+		recipientID, err := a.store.FindRecipient(ctx, username)
 		if err != nil {
-			log.Debug("cannot parse timezone")
-			w.WriteHeader(http.StatusBadRequest)
+			log.Debug("cannot find recipient by username", log.String("username", username), log.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		// получаем текущее время в часовом поясе пользователя
-		now := time.Now().In(tz)
-		hour, minute, _ := now.Clock()
+		// сохраняем новое сообщение в СУБД, после успешного сохранения оно станет доступно для прослушивания получателем
+		err = a.store.SaveMessage(ctx, recipientID, store.Message{
+			Sender:  req.Session.User.UserID,
+			Time:    time.Now(),
+			Payload: message,
+		})
+		if err != nil {
+			log.Debug("cannot save message", log.String("recipient", recipientID), log.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-		// формируем текст ответа
-		text = fmt.Sprintf("Точное время %d часов, %d минут. %s", hour, minute, text)
+		// Оповестим отправителя об успешности операции
+		text = "Сообщение успешно отправлено"
+
+	// пользователь попросил прочитать сообщение
+	case strings.HasPrefix(req.Request.Command, "Прочитай"):
+		// гипотетическая функция parseReadCommand вычленит из запроса порядковый номер сообщения в списке доступных
+		messageIndex := parseReadCommand(req.Request.Command)
+
+		// получим список непрослушанных сообщений пользователя
+		messages, err := a.store.ListMessages(ctx, req.Session.User.UserID)
+		if err != nil {
+			log.Debug("cannot load messages for user", log.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		text = "Для вас нет новых сообщений."
+		if len(messages) < messageIndex {
+			// пользователь попросил прочитать сообщение, которого нет
+			text = "Такого сообщения не существует."
+		} else {
+			// получим сообщение по идентификатору
+			messageID := messages[messageIndex].ID
+			message, err := a.store.GetMessage(ctx, messageID)
+			if err != nil {
+				log.Debug("cannot load message", log.Int64("id", messageID), log.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			// передадим текст сообщения в ответе
+			text = fmt.Sprintf("Сообщение от %s, отправлено %s: %s", message.Sender, message.Time, message.Payload)
+		}
+
+	// если не поняли команду, просто скажем пользователю, сколько у него новых сообщений
+	default:
+		messages, err := a.store.ListMessages(ctx, req.Session.User.UserID)
+		if err != nil {
+			log.Debug("cannot load messages for user", log.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		text = "Для вас нет новых сообщений."
+		if len(messages) > 0 {
+			text = fmt.Sprintf("Для вас %d новых сообщений.", len(messages))
+		}
+
+		// первый запрос новой сессии
+		if req.Session.New {
+			// обработаем поле Timezone запроса
+			tz, err := time.LoadLocation(req.Timezone)
+			if err != nil {
+				log.Debug("cannot parse timezone")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			// получим текущее время в часовом поясе пользователя
+			now := time.Now().In(tz)
+			hour, minute, _ := now.Clock()
+
+			// формируем новый текст приветствия
+			text = fmt.Sprintf("Точное время %d часов, %d минут. %s", hour, minute, text)
+		}
 	}
 
 	// заполняем модель ответа
@@ -96,4 +162,12 @@ func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("sending HTTP 200 response")
+}
+
+func parseReadCommand(command string) int {
+	return 1
+}
+
+func parseSendCommand(command string) (string, string) {
+	return "alice", "test message"
 }

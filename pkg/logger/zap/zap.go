@@ -44,6 +44,10 @@ func (l *zapLogger) String(key string, val string) zap.Field {
 	return zap.String(key, val)
 }
 
+func (l *zapLogger) Int64(key string, val int64) zap.Field {
+	return zap.Int64(key, val)
+}
+
 func (l *zapLogger) Error(err error) zap.Field {
 	return zap.Error(err)
 }
