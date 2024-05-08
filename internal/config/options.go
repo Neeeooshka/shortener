@@ -104,8 +104,8 @@ func (d *DB) Set(flag string) error {
 	return nil
 }
 
-func NewOptions() *Options {
-	return &Options{
+func NewOptions() Options {
+	return Options{
 		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
 		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
 		FileStorage:   FileStorage{},
