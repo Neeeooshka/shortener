@@ -64,8 +64,6 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Println(io.ReadAll(r.Body))
-		fmt.Println(req)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -77,6 +75,39 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 		Result string `json:"result"`
 	}{
 		Result: a.GetBaseURL() + "/" + shortLink,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(&resp)
+}
+
+func (a *app) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	type reqURL struct {
+		ID  string `json:"correlation_id"`
+		URL string `json:"original_url"`
+	}
+
+	var req []reqURL
+	var resp []storage.Batch
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	for _, e := range req {
+		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, Result: a.GenerateShortLink()})
+	}
+
+	if err := a.storage.AddBatch(resp); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

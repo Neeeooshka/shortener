@@ -26,6 +26,10 @@ func (l *Links) Add(sl, fl string) (err error) {
 	return err
 }
 
+func (l *Links) AddBatch(b []storage.Batch) error {
+	return nil
+}
+
 func (l *Links) Get(shortLink string) (string, bool) {
 	for _, link := range l.links {
 		if link.ShortLink == shortLink {

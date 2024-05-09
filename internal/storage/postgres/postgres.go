@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"net/http"
 )
@@ -13,6 +14,10 @@ type Postgres struct {
 func (l *Postgres) Add(sl, fl string) error {
 	_, err := l.DB.Exec("INSERT INTO shortener_links (short_url, original_url) VALUES ($1,$2)\nON CONFLICT (short_url) DO\n    UPDATE SET original_url = EXCLUDED.original_url", sl, fl)
 	return err
+}
+
+func (l *Postgres) AddBatch(b []storage.Batch) error {
+	return nil
 }
 
 func (l *Postgres) Get(shortLink string) (string, bool) {

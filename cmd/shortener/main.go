@@ -41,6 +41,7 @@ func main() {
 	router := chi.NewRouter()
 	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.ShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
 	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Post("/api/shorten/batch", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIBatchShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
 	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
 	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
 
