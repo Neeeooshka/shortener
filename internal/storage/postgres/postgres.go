@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -17,7 +18,30 @@ func (l *Postgres) Add(sl, fl string) error {
 }
 
 func (l *Postgres) AddBatch(b []storage.Batch) error {
-	return nil
+
+	ctx, cansel := context.WithCancel(context.Background())
+	defer cansel()
+
+	tx, err := l.DB.BeginTx(ctx, nil)
+
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url) VALUES ($1,$2)\nON CONFLICT (short_url) DO\n    UPDATE SET original_url = EXCLUDED.original_url")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, e := range b {
+		_, err := stmt.Exec(e.Result, e.URL)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (l *Postgres) Get(shortLink string) (string, bool) {
