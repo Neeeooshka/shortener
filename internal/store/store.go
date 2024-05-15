@@ -2,8 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrConflict = errors.New("data conflict")
 
 // Store описывает абстрактное хранилище сообщений пользователей
 type Store interface {
@@ -15,6 +18,8 @@ type Store interface {
 	GetMessage(ctx context.Context, id int64) (*Message, error)
 	// SaveMessage сохраняет новое сообщение
 	SaveMessage(ctx context.Context, userID string, msg Message) error
+	// RegisterUser регистрирует нового пользователя
+	RegisterUser(ctx context.Context, userID, username string) error
 }
 
 // Message описывает объект сообщения

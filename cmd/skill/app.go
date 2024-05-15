@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"net/http"
@@ -112,6 +113,27 @@ func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
 			text = fmt.Sprintf("Сообщение от %s, отправлено %s: %s", message.Sender, message.Time, message.Payload)
 		}
 
+	// пользователь хочет зарегистрироваться
+	case strings.HasPrefix(req.Request.Command, "Зарегистрируй"):
+		// гипотетическая функция parseRegisterCommand вычленит из запроса
+		// желаемое имя нового пользователя
+		username := parseRegisterCommand(req.Request.Command)
+
+		// регистрируем пользователя
+		err := a.store.RegisterUser(ctx, req.Session.User.UserID, username)
+		// наличие неспецифичной ошибки
+		if err != nil && !errors.Is(err, store.ErrConflict) {
+			log.Debug("cannot register user", log.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// определяем правильное ответное сообщение пользователю
+		text = fmt.Sprintf("Вы успешно зарегистрированы под именем %s", username)
+		if errors.Is(err, store.ErrConflict) {
+			// ошибка специфична для случая конфликта имён пользователей
+			text = "Извините, такое имя уже занято. Попробуйте другое."
+		}
 	// если не поняли команду, просто скажем пользователю, сколько у него новых сообщений
 	default:
 		messages, err := a.store.ListMessages(ctx, req.Session.User.UserID)
@@ -170,4 +192,8 @@ func parseReadCommand(command string) int {
 
 func parseSendCommand(command string) (string, string) {
 	return "alice", "test message"
+}
+
+func parseRegisterCommand(command string) string {
+	return "Дима"
 }
