@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
+	"github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
 	"github.com/thanhpk/randstr"
 	"io"
 	"net/http"
@@ -47,7 +49,17 @@ func (a *app) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortLink := a.GenerateShortLink()
-	a.storage.Add(shortLink, string(body))
+	err = a.storage.Add(shortLink, string(body))
+	var ec *postgres.ErrorConflict
+	if err != nil {
+		if errors.As(err, &ec) {
+			w.WriteHeader(http.StatusConflict)
+			fmt.Fprint(w, a.GetBaseURL()+"/"+ec.ShortLink)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, a.GetBaseURL()+"/"+shortLink)

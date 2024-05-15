@@ -8,13 +8,35 @@ import (
 	"net/http"
 )
 
+type ErrorConflict struct {
+	ShortLink string
+	err       string
+}
+
+func (e *ErrorConflict) Error() string {
+	return e.err
+}
+
 type Postgres struct {
 	DB *sql.DB
 }
 
 func (l *Postgres) Add(sl, fl string) error {
-	_, err := l.DB.Exec("INSERT INTO shortener_links (short_url, original_url) VALUES ($1,$2)\nON CONFLICT (short_url) DO\n    UPDATE SET original_url = EXCLUDED.original_url", sl, fl)
-	return err
+
+	var shortLink string
+	var existing bool
+
+	row := l.DB.QueryRow("WITH ins AS (\n    INSERT INTO shortener_links (short_url, original_url)\n    VALUES ($1, $2)\n    ON CONFLICT (original_url) DO NOTHING\n        RETURNING short_url\n)\nSELECT short_url, 1 as is_new FROM ins\nUNION  ALL\nSELECT short_url, 0 as is_new FROM shortener_links WHERE original_url = $2\nLIMIT 1", sl, fl)
+	err := row.Scan(&shortLink, &existing)
+	if err != nil {
+		return err
+	}
+
+	if existing {
+		return &ErrorConflict{err: "link already exsists", ShortLink: shortLink}
+	}
+
+	return nil
 }
 
 func (l *Postgres) AddBatch(b []storage.Batch) error {
@@ -28,7 +50,7 @@ func (l *Postgres) AddBatch(b []storage.Batch) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url) VALUES ($1,$2)\nON CONFLICT (short_url) DO\n    UPDATE SET original_url = EXCLUDED.original_url")
+	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url) VALUES ($1,$2)\nON CONFLICT (original_url) DO NOTHING")
 	if err != nil {
 		return err
 	}
@@ -71,7 +93,7 @@ func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Postgres) initStructForLinks() (err error) {
-	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    uuid SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character(250) NOT NULL,\n    PRIMARY KEY (uuid),\n    UNIQUE (short_url)\n )")
+	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    uuid SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character(250) NOT NULL,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
 	return err
 }
 
