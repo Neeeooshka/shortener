@@ -81,7 +81,9 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortLink := a.GenerateShortLink()
-	a.storage.Add(shortLink, req.URL)
+	err := a.storage.Add(shortLink, req.URL)
+
+	w.Header().Set("Content-Type", "application/json")
 
 	resp := struct {
 		Result string `json:"result"`
@@ -89,8 +91,18 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 		Result: a.GetBaseURL() + "/" + shortLink,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	var ec *postgres.ErrorConflict
+	if err != nil {
+		if !errors.As(err, &ec) {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusConflict)
+		resp.Result = a.GetBaseURL() + "/" + ec.ShortLink
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
+
 	json.NewEncoder(w).Encode(&resp)
 }
 
