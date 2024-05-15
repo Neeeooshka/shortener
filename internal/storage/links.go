@@ -17,7 +17,8 @@ type Link struct {
 }
 
 type Batch struct {
-	ID     string `json:"correlation_id"`
-	URL    string `json:"-"`
-	Result string `json:"short_url"`
+	ID       string `json:"correlation_id"`
+	URL      string `json:"-"`
+	ShortURL string `json:"-"`
+	Result   string `json:"short_url"`
 }

@@ -102,7 +102,8 @@ func (a *app) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, e := range req {
-		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, Result: a.GenerateShortLink()})
+		shortLink := a.GenerateShortLink()
+		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, ShortURL: shortLink, Result: a.GetBaseURL() + "/" + shortLink})
 	}
 
 	if err := a.storage.AddBatch(resp); err != nil {

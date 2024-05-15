@@ -35,7 +35,7 @@ func (l *Postgres) AddBatch(b []storage.Batch) error {
 	defer stmt.Close()
 
 	for _, e := range b {
-		_, err := stmt.Exec(e.Result, e.URL)
+		_, err := stmt.Exec(e.ShortURL, e.URL)
 		if err != nil {
 			return err
 		}

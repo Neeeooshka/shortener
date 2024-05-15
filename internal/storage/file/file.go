@@ -28,7 +28,7 @@ func (l *Links) Add(sl, fl string) (err error) {
 
 func (l *Links) AddBatch(b []storage.Batch) error {
 	for _, e := range b {
-		err := l.Add(e.Result, e.URL)
+		err := l.Add(e.ShortURL, e.URL)
 		if err != nil {
 			return err
 		}
