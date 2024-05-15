@@ -24,15 +24,15 @@ type Postgres struct {
 func (l *Postgres) Add(sl, fl string) error {
 
 	var shortLink string
-	var existing bool
+	var is_new bool
 
 	row := l.DB.QueryRow("WITH ins AS (\n    INSERT INTO shortener_links (short_url, original_url)\n    VALUES ($1, $2)\n    ON CONFLICT (original_url) DO NOTHING\n        RETURNING short_url\n)\nSELECT short_url, 1 as is_new FROM ins\nUNION  ALL\nSELECT short_url, 0 as is_new FROM shortener_links WHERE original_url = $2\nLIMIT 1", sl, fl)
-	err := row.Scan(&shortLink, &existing)
+	err := row.Scan(&shortLink, &is_new)
 	if err != nil {
 		return err
 	}
 
-	if existing {
+	if !is_new {
 		return &ErrorConflict{err: "link already exsists", ShortLink: shortLink}
 	}
 
