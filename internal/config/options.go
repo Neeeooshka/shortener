@@ -109,6 +109,6 @@ func NewOptions() Options {
 		ServerAddress: ServerAddress{Host: "localhost", Port: 8080},
 		BaseURL:       BaseURL{Host: "localhost", Port: 8080},
 		FileStorage:   FileStorage{},
-		DB:            DB{"host=localhost user=shortener password=shortener dbname=shortener"},
+		DB:            DB{},
 	}
 }

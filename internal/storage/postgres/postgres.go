@@ -11,11 +11,10 @@ import (
 
 type ConflictError struct {
 	ShortLink string
-	err       string
 }
 
 func (e *ConflictError) Error() string {
-	return e.err
+	return "link already exsists"
 }
 
 type Postgres struct {
@@ -34,7 +33,7 @@ func (l *Postgres) Add(sl, fl string) error {
 	}
 
 	if !isNew {
-		return &ConflictError{err: "link already exsists", ShortLink: shortLink}
+		return &ConflictError{ShortLink: shortLink}
 	}
 
 	return nil
