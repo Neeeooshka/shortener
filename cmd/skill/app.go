@@ -122,7 +122,7 @@ func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
 		// регистрируем пользователя
 		err := a.store.RegisterUser(ctx, req.Session.User.UserID, username)
 		// наличие неспецифичной ошибки
-		if err != nil && !errors.Is(err, store.ConflictError) {
+		if err != nil && !errors.Is(err, store.ErrConflict) {
 			log.Debug("cannot register user", log.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -130,7 +130,7 @@ func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
 
 		// определяем правильное ответное сообщение пользователю
 		text = fmt.Sprintf("Вы успешно зарегистрированы под именем %s", username)
-		if errors.Is(err, store.ConflictError) {
+		if errors.Is(err, store.ErrConflict) {
 			// ошибка специфична для случая конфликта имён пользователей
 			text = "Извините, такое имя уже занято. Попробуйте другое."
 		}
