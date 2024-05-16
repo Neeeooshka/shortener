@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
 	"github.com/thanhpk/randstr"
-	"io"
-	"net/http"
-	"strings"
 )
 
 type app struct {
@@ -18,8 +19,8 @@ type app struct {
 	storage storage.LinkStorage
 }
 
-func (a *app) GetBaseURL() string {
-	return a.options.GetBaseURL()
+func (a *app) GetShortURL(id string) string {
+	return a.options.GetBaseURL() + "/" + id
 }
 
 func (a *app) GenerateShortLink() string {
@@ -50,11 +51,11 @@ func (a *app) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 
 	shortLink := a.GenerateShortLink()
 	err = a.storage.Add(shortLink, string(body))
-	var ec *postgres.ErrorConflict
+	var ce *postgres.ConflictError
 	if err != nil {
-		if errors.As(err, &ec) {
+		if errors.As(err, &ce) {
 			w.WriteHeader(http.StatusConflict)
-			fmt.Fprint(w, a.GetBaseURL()+"/"+ec.ShortLink)
+			fmt.Fprint(w, a.GetShortURL(ce.ShortLink))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -62,7 +63,7 @@ func (a *app) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, a.GetBaseURL()+"/"+shortLink)
+	fmt.Fprint(w, a.GetShortURL(shortLink))
 }
 
 func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,17 +89,17 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	resp := struct {
 		Result string `json:"result"`
 	}{
-		Result: a.GetBaseURL() + "/" + shortLink,
+		Result: a.GetShortURL(shortLink),
 	}
 
-	var ec *postgres.ErrorConflict
+	var ce *postgres.ConflictError
 	if err != nil {
-		if !errors.As(err, &ec) {
+		if !errors.As(err, &ce) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusConflict)
-		resp.Result = a.GetBaseURL() + "/" + ec.ShortLink
+		resp.Result = a.GetShortURL(ce.ShortLink)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -118,16 +119,17 @@ func (a *app) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req []reqURL
-	var resp []storage.Batch
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	resp := make([]storage.Batch, 0, len(req))
+
 	for _, e := range req {
 		shortLink := a.GenerateShortLink()
-		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, ShortURL: shortLink, Result: a.GetBaseURL() + "/" + shortLink})
+		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, ShortURL: shortLink, Result: a.GetShortURL(shortLink)})
 	}
 
 	if err := a.storage.AddBatch(resp); err != nil {

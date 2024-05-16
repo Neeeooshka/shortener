@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	file "github.com/Neeeooshka/alice-skill.git/internal/storage/file"
@@ -12,7 +14,6 @@ import (
 	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 func main() {
@@ -46,7 +47,7 @@ func main() {
 	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
 
 	// create HTTP Server
-	http.ListenAndServe(opt.GetServer(), router)
+	http.ListenAndServe(appInstance.options.GetServer(), router)
 }
 
 // init options

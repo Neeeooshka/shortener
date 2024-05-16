@@ -1,8 +1,9 @@
 package logger
 
 import (
-	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"net/http"
+
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 )
 
 // RequestLogger — middleware-логер для входящих HTTP-запросов.

@@ -153,7 +153,7 @@ func (s Store) RegisterUser(ctx context.Context, userID, username string) error 
 		// проверяем, что ошибка сигнализирует о потенциальном нарушении целостности данных
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-			err = store.ErrConflict
+			err = store.ConflictError
 		}
 	}
 

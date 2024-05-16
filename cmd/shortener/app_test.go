@@ -3,16 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Neeeooshka/alice-skill.git/internal/config"
-	storage "github.com/Neeeooshka/alice-skill.git/internal/storage/mock"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/config"
+	storage "github.com/Neeeooshka/alice-skill.git/internal/storage/mock"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type link struct {

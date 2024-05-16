@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var ErrConflict = errors.New("data conflict")
+var ConflictError = errors.New("data conflict")
 
 // Store описывает абстрактное хранилище сообщений пользователей
 type Store interface {

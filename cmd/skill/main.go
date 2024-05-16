@@ -3,13 +3,14 @@ package main
 
 import (
 	"database/sql"
+	"log"
+	"net/http"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/logger"
 	"github.com/Neeeooshka/alice-skill.git/internal/store/pg"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
 	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
-	"log"
-	"net/http"
 )
 
 func main() {

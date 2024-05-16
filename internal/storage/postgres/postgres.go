@@ -3,17 +3,18 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"net/http"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"net/http"
 )
 
-type ErrorConflict struct {
+type ConflictError struct {
 	ShortLink string
 	err       string
 }
 
-func (e *ErrorConflict) Error() string {
+func (e *ConflictError) Error() string {
 	return e.err
 }
 
@@ -33,7 +34,7 @@ func (l *Postgres) Add(sl, fl string) error {
 	}
 
 	if !isNew {
-		return &ErrorConflict{err: "link already exsists", ShortLink: shortLink}
+		return &ConflictError{err: "link already exsists", ShortLink: shortLink}
 	}
 
 	return nil

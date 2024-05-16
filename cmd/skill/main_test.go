@@ -3,6 +3,12 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/store"
 	"github.com/Neeeooshka/alice-skill.git/internal/store/mock"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
@@ -11,11 +17,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func TestWebhook(t *testing.T) {
