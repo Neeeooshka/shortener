@@ -2,24 +2,34 @@
 package main
 
 import (
-	"github.com/Neeeooshka/alice-skill.git/internal/gzip"
-	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
-	"github.com/Neeeooshka/alice-skill.git/internal/logger"
-	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
-	"go.uber.org/zap"
+	"database/sql"
 	"log"
 	"net/http"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/logger"
+	"github.com/Neeeooshka/alice-skill.git/internal/store/pg"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 )
 
 func main() {
-	// обрабатываем аргументы командной строки
 	parseFlags()
 
-	if err := logger.Initialize(flagLogLevel); err != nil {
+	zapLogger, err := zap.NewZapLogger("info")
+	if err != nil {
 		panic(err)
 	}
 
-	logger.Log.Info("Running server", zap.String("address", flagRunAddr))
+	// создаём соединение с СУБД PostgreSQL с помощью аргумента командной строки
+	conn, err := sql.Open("pgx", flagDatabaseURI)
+	if err != nil {
+		panic(err)
+	}
+
+	appInstance := newApp(pg.NewStore(conn))
+
+	zapLogger.Info("Running server", zapLogger.String("address", flagRunAddr))
 	// оборачиваем хендлер в middleware с логированием и поддержкой gzip
-	log.Fatal(http.ListenAndServe(flagRunAddr, logger.RequestLogger(compressor.IncludeCompressor(handlers.AliceSkill, gzip.NewGzipCompressor()))))
+	log.Fatal(http.ListenAndServe(flagRunAddr, logger.RequestLogger(compressor.IncludeCompressor(appInstance.AliceSkill, gzip.NewGzipCompressor()))))
 }

@@ -3,29 +3,47 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	gz "github.com/Neeeooshka/alice-skill.git/internal/gzip"
-	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
-	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
-	"github.com/go-resty/resty/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/store"
+	"github.com/Neeeooshka/alice-skill.git/internal/store/mock"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
+	gz "github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
+	"github.com/go-resty/resty/v2"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWebhook(t *testing.T) {
-	handler := http.HandlerFunc(handlers.AliceSkill)
+	// создадим конроллер моков и экземпляр мок-хранилища
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockStore(ctrl)
+
+	// определим, какой результат будем получать от «хранилища»
+	messages := []store.Message{
+		{
+			Sender:  "411419e5-f5be-4cdb-83aa-2ca2b6648353",
+			Time:    time.Now(),
+			Payload: "Hello!",
+		},
+	}
+
+	// установим условие: при любом вызове метода ListMessages возвращать массив messages без ошибки
+	s.EXPECT().
+		ListMessages(gomock.Any(), gomock.Any()).
+		Return(messages, nil)
+
+	// создадим экземпляр приложения и передадим ему «хранилище»
+	appInstance := newApp(s)
+
+	handler := http.HandlerFunc(appInstance.AliceSkill)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
-
-	successBody := `{
-        "response": {
-            "text": "Извините, я пока ничего не умею"
-        },
-        "version": "1.0"
-    }`
 
 	testCases := []struct {
 		name         string // добавляем название тестов
@@ -68,9 +86,9 @@ func TestWebhook(t *testing.T) {
 		{
 			name:         "method_post_success",
 			method:       http.MethodPost,
-			body:         `{"request": {"type": "SimpleUtterance", "command": "sudo do something"}, "version": "1.0"}`,
+			body:         `{"request": {"type": "SimpleUtterance", "command": "sudo do something"}, "session": {"new": true}, "version": "1.0"}`,
 			expectedCode: http.StatusOK,
-			expectedBody: successBody,
+			expectedBody: `Точное время .* часов, .* минут. Для вас 1 новых сообщений.`,
 		},
 	}
 
@@ -91,33 +109,44 @@ func TestWebhook(t *testing.T) {
 			assert.Equal(t, tc.expectedCode, resp.StatusCode(), "Response code didn't match expected")
 			// проверяем корректность полученного тела ответа, если мы его ожидаем
 			if tc.expectedBody != "" {
-				assert.JSONEq(t, tc.expectedBody, string(resp.Body()))
+				// сравниваем тело ответа с ожидаемым шаблоном
+				assert.Regexp(t, tc.expectedBody, string(resp.Body()))
 			}
 		})
 	}
 }
 
 func TestGzipCompression(t *testing.T) {
-	handler := http.HandlerFunc(compressor.IncludeCompressor(handlers.AliceSkill, gz.NewGzipCompressor()))
+	// создадим конроллер моков и экземпляр мок-хранилища
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockStore(ctrl)
 
+	// определим, какой результат будем получать от «хранилища»
+	messages := []store.Message{
+		{
+			Sender:  "411419e5-f5be-4cdb-83aa-2ca2b6648353",
+			Time:    time.Now(),
+			Payload: "Hello!",
+		},
+	}
+
+	// установим условие: при любом вызове метода ListMessages возвращать массив messages без ошибки
+	s.EXPECT().
+		ListMessages(gomock.Any(), gomock.Any()).
+		Return(messages, nil).
+		MaxTimes(2)
+
+	// создадим экземпляр приложения и передадим ему «хранилище»
+	appInstance := newApp(s)
+
+	handler := http.HandlerFunc(compressor.IncludeCompressor(appInstance.AliceSkill, gz.NewGzipCompressor()))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	requestBody := `{
-        "request": {
-            "type": "SimpleUtterance",
-            "command": "sudo do something"
-        },
-        "version": "1.0"
-    }`
+	requestBody := `{"request": {"type": "SimpleUtterance", "command": "sudo do something"}, "session": {"new": true}, "version": "1.0"}`
 
 	// ожидаемое содержимое тела ответа при успешном запросе
-	successBody := `{
-        "response": {
-            "text": "Извините, я пока ничего не умею"
-        },
-        "version": "1.0"
-    }`
+	successBody := `Точное время .* часов, .* минут. Для вас 1 новых сообщений.`
 
 	t.Run("sends_gzip", func(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
@@ -140,7 +169,7 @@ func TestGzipCompression(t *testing.T) {
 
 		b, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		require.JSONEq(t, successBody, string(b))
+		assert.Regexp(t, successBody, string(b))
 	})
 
 	t.Run("accepts_gzip", func(t *testing.T) {
@@ -161,6 +190,6 @@ func TestGzipCompression(t *testing.T) {
 		b, err := io.ReadAll(zr)
 		require.NoError(t, err)
 
-		require.JSONEq(t, successBody, string(b))
+		assert.Regexp(t, successBody, string(b))
 	})
 }

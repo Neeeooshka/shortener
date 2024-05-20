@@ -2,50 +2,52 @@ package main
 
 import (
 	"flag"
+	"net/http"
+
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
-	"github.com/Neeeooshka/alice-skill.git/internal/gzip"
-	"github.com/Neeeooshka/alice-skill.git/internal/handlers"
-	"github.com/Neeeooshka/alice-skill.git/internal/logger"
+	"github.com/Neeeooshka/alice-skill.git/internal/storage"
+	file "github.com/Neeeooshka/alice-skill.git/internal/storage/file"
+	postgres "github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
 	"github.com/Neeeooshka/alice-skill.git/pkg/compressor"
+	"github.com/Neeeooshka/alice-skill.git/pkg/compressor/gzip"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
-	"net/http"
 )
 
-type zapLogger struct {
-	logger *zap.Logger
-}
-
-func (l *zapLogger) Log(rq logger.RequestData, rs logger.ResponseData) {
-	l.logger.Debug("receive new request",
-		zap.String("URI", rq.URI),
-		zap.String("method", rq.Method),
-		zap.Duration("duration", rq.Duration),
-		zap.Int("status", rs.Status),
-		zap.Int("size", rs.Size),
-	)
-}
-
 func main() {
+
 	opt := getOptions()
 
-	if err := logger.Initialize("info"); err != nil {
+	zapLoger, err := zap.NewZapLogger("info")
+	if err != nil {
 		panic(err)
 	}
 
-	zapLoger := &zapLogger{logger: logger.Log}
+	var store storage.LinkStorage
+	if opt.DB.String() != "" {
+		store, err = postgres.NewPostgresLinksStorage(opt.DB.String())
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		store, _ = file.NewFileLinksStorage(opt.FileStorage.String())
+	}
+	defer store.Close()
 
-	sh := newShortener(opt)
+	appInstance := newAppInstance(opt, store)
 
 	// create router
 	router := chi.NewRouter()
-	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(handlers.GetShortenerHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
-	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(handlers.GetAPIShortenHandler(&sh), gzip.NewGzipCompressor()), zapLoger))
-	router.Get("/{id}", logger.IncludeLogger(handlers.GetExpanderHandler(&sh), zapLoger))
+	router.Post("/", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.ShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Post("/api/shorten", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Post("/api/shorten/batch", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIBatchShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
+	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
+	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
 
 	// create HTTP Server
-	http.ListenAndServe(opt.GetServer(), router)
+	http.ListenAndServe(appInstance.options.GetServer(), router)
 }
 
 // init options
@@ -56,6 +58,7 @@ func getOptions() config.Options {
 	flag.Var(&opt.ServerAddress, "a", "Server address - host:port")
 	flag.Var(&opt.BaseURL, "b", "Server ShortLink Base address - protocol://host:port")
 	flag.Var(&opt.FileStorage, "f", "File storage path for shortlinks")
+	flag.Var(&opt.DB, "d", "postrgres connection string")
 
 	flag.Parse()
 	env.Parse(&cfg)
@@ -70,6 +73,10 @@ func getOptions() config.Options {
 
 	if cfg.FileStorage != "" {
 		opt.FileStorage.Set(cfg.FileStorage)
+	}
+
+	if cfg.DB != "" {
+		opt.DB.Set(cfg.DB)
 	}
 
 	return opt
