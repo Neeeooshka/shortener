@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -43,7 +43,7 @@ var testCases = []struct {
 
 func TestShortener(t *testing.T) {
 
-	app := &app{options: config.NewOptions()}
+	app := &shortenerApp{Options: config.NewOptions()}
 
 	for _, tc := range testCases {
 		t.Run("shorte link: "+tc.link.URL, func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestShortener(t *testing.T) {
 
 func TestApiShorten(t *testing.T) {
 
-	app := &app{options: config.NewOptions()}
+	app := &shortenerApp{Options: config.NewOptions()}
 
 	for _, tc := range testCases {
 		t.Run("shorte link: "+tc.link.URL, func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestApiShorten(t *testing.T) {
 	}
 }
 
-func (a *app) setMockShortLink(t *testing.T, URL string) {
+func (a *shortenerApp) setMockShortLink(t *testing.T, URL string) {
 
 	ctrl := gomock.NewController(t)
 	s := storage.NewMockLinkStorage(ctrl)

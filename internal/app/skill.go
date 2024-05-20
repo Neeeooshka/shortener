@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -14,16 +14,16 @@ import (
 )
 
 // app инкапсулирует в себя все зависимости и логику приложения
-type app struct {
+type skillApp struct {
 	store store.Store
 }
 
 // newApp принимает на вход внешние зависимости приложения и возвращает новый объект app
-func newApp(s store.Store) *app {
-	return &app{store: s}
+func NewSkillApp(s store.Store) *skillApp {
+	return &skillApp{store: s}
 }
 
-func (a *app) AliceSkill(w http.ResponseWriter, r *http.Request) {
+func (a *skillApp) AliceSkill(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := zap.Log
 

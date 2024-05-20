@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -14,24 +14,24 @@ import (
 	"github.com/thanhpk/randstr"
 )
 
-type app struct {
-	options config.Options
+type shortenerApp struct {
+	Options config.Options
 	storage storage.LinkStorage
 }
 
-func (a *app) GetShortURL(id string) string {
-	return a.options.GetBaseURL() + "/" + id
+func (a *shortenerApp) GetShortURL(id string) string {
+	return a.Options.GetBaseURL() + "/" + id
 }
 
-func (a *app) GenerateShortLink() string {
+func (a *shortenerApp) GenerateShortLink() string {
 	return randstr.Base62(8)
 }
 
-func newAppInstance(opt config.Options, s storage.LinkStorage) *app {
-	return &app{options: opt, storage: s}
+func NewShortenerAppInstance(opt config.Options, s storage.LinkStorage) *shortenerApp {
+	return &shortenerApp{Options: opt, storage: s}
 }
 
-func (a *app) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
+func (a *shortenerApp) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
 	link, _ := strings.CutPrefix(r.URL.String(), "/")
 	if fullLink, ok := a.storage.Get(link); ok {
 		w.Header().Set("Location", fullLink)
@@ -42,7 +42,7 @@ func (a *app) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-func (a *app) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
+func (a *shortenerApp) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -66,7 +66,7 @@ func (a *app) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, a.GetShortURL(shortLink))
 }
 
-func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
+func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -84,7 +84,7 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	shortLink := a.GenerateShortLink()
 	err := a.storage.Add(shortLink, req.URL)
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "ShortenerApplication/json")
 
 	resp := struct {
 		Result string `json:"result"`
@@ -107,7 +107,7 @@ func (a *app) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&resp)
 }
 
-func (a *app) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
+func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -137,7 +137,7 @@ func (a *app) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "ShortenerApplication/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(&resp)
 }
