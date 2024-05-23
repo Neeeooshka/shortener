@@ -136,10 +136,6 @@ func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Reques
 
 	shortLink := a.GenerateShortLink()
 	err = a.storage.Add(shortLink, req.URL, userID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -210,7 +206,7 @@ func (a *shortenerApp) getUserID(w http.ResponseWriter, r *http.Request) (string
 
 	ck, err := r.Cookie("userID")
 
-	if err != nil || time.Now().Sub(ck.Expires) > 0 {
+	if err != nil {
 		token, err := auth.GenerateToken()
 		if err != nil {
 			return "", err

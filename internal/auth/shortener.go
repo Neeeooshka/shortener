@@ -5,19 +5,20 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 )
 
 const secretkey = "neooshka"
 
-func generateRandom(size int) ([]byte, error) {
+func generateRandom(size int) (string, error) {
 
 	b := make([]byte, size)
 	_, err := rand.Read(b)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return b, nil
+	return hex.EncodeToString(b), nil
 }
 
 func getAesCipher() (cipher.AEAD, []byte, error) {
@@ -49,9 +50,9 @@ func GenerateToken() (string, error) {
 		return "", err
 	}
 
-	token := aesgcm.Seal(nil, nonce, randID, nil)
+	token := aesgcm.Seal(nil, nonce, []byte(randID), nil)
 
-	return string(token), nil
+	return hex.EncodeToString(token), nil
 }
 
 func GetUserID(token string) (string, error) {
@@ -61,7 +62,12 @@ func GetUserID(token string) (string, error) {
 		return "", err
 	}
 
-	userID, err := aesgcm.Open(nil, nonce, []byte(token), nil)
+	ciphertext, err := hex.DecodeString(token)
+	if err != nil {
+		return "", err
+	}
+
+	userID, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 
 	return string(userID), err
 }
