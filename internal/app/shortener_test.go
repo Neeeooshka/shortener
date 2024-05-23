@@ -116,7 +116,7 @@ func (a *shortenerApp) setMockShortLink(t *testing.T, URL string) {
 	ctrl := gomock.NewController(t)
 	s := storage.NewMockLinkStorage(ctrl)
 
-	s.EXPECT().Add(gomock.Any(), URL).Return(nil)
+	s.EXPECT().Add(gomock.Any(), URL, "").Return(nil)
 	s.EXPECT().Get(gomock.Any()).Return(URL, true)
 
 	a.storage = s

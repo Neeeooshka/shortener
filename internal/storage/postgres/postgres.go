@@ -84,7 +84,7 @@ func (l *Postgres) GetUserURLs(userID string) []storage.Link {
 	var links []storage.Link
 
 	rows, err := l.DB.Query("SELECT short_url, original_url FROM shortener_links WHERE user_id = $1", userID)
-	if err == nil {
+	if err == nil && rows.Err() == nil {
 		for rows.Next() {
 
 			var shortLink, fullLink string

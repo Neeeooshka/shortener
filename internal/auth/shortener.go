@@ -49,10 +49,6 @@ func GenerateToken() (string, error) {
 		return "", err
 	}
 
-	if err != nil {
-		return "", err
-	}
-
 	token := aesgcm.Seal(nil, nonce, randID, nil)
 
 	return string(token), nil
