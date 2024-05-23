@@ -65,15 +65,10 @@ func (a *shortenerApp) UserUrlsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type userLink struct {
-		ShortLink string `json:"short_url"`
-		FullLink  string `json:"original_url"`
-	}
-
-	userLinks := make([]userLink, 0, len(links))
+	userLinks := make([]storage.Link, 0, len(links))
 
 	for _, e := range links {
-		userLinks = append(userLinks, userLink{ShortLink: a.GetShortURL(e.ShortLink), FullLink: e.FullLink})
+		userLinks = append(userLinks, storage.Link{ShortLink: a.GetShortURL(e.ShortLink), FullLink: e.FullLink})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

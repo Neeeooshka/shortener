@@ -12,10 +12,10 @@ type LinkStorage interface {
 }
 
 type Link struct {
-	UUID      uint   `json:"uuid"`
+	UUID      uint   `json:"uuid,omitempty"`
 	ShortLink string `json:"short_url"`
 	FullLink  string `json:"original_url"`
-	UserID    string
+	UserID    string `json:"-"`
 }
 
 type Batch struct {

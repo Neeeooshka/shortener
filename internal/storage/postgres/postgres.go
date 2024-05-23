@@ -113,7 +113,7 @@ func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Postgres) initStructForLinks() (err error) {
-	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    uuid SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character(250) NOT NULL,\n    user_id character(32) NULL,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
+	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    uuid SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character varying(250) NOT NULL,\n    user_id character(32) NULL,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
 	return err
 }
 
