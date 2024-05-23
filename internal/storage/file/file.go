@@ -15,9 +15,9 @@ type Links struct {
 	fileStorage *os.File
 }
 
-func (l *Links) Add(sl, fl string) (err error) {
+func (l *Links) Add(sl, fl, userID string) (err error) {
 	uuid := uint(len(l.links))
-	newLink := storage.Link{ShortLink: sl, FullLink: fl, UUID: uuid + 1}
+	newLink := storage.Link{UserID: userID, ShortLink: sl, FullLink: fl, UUID: uuid + 1}
 	l.links = append(l.links, newLink)
 
 	if l.fileStorage != nil {
@@ -27,9 +27,9 @@ func (l *Links) Add(sl, fl string) (err error) {
 	return err
 }
 
-func (l *Links) AddBatch(b []storage.Batch) error {
+func (l *Links) AddBatch(b []storage.Batch, userID string) error {
 	for _, e := range b {
-		err := l.Add(e.ShortURL, e.URL)
+		err := l.Add(e.ShortURL, e.URL, userID)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func (l *Links) Close() error {
 	return l.fileStorage.Close()
 }
 
-func (l *Links) PingHandler(w http.ResponseWriter, r *http.Request) {
+func (l *Links) PingHandler(w http.ResponseWriter, _ *http.Request) {
 
 	if l.fileStorage == nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -61,7 +61,21 @@ func (l *Links) PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (l *Links) GetUserURLs(userID string) []storage.Link {
+
+	var links = make([]storage.Link, 0, len(l.links))
+
+	for _, link := range l.links {
+		if link.UserID == userID {
+			links = append(links, link)
+		}
+	}
+
+	return links
+}
+
 func (l *Links) SetLinksFromFile(filename string) error {
+
 	if filename == "" {
 		return errors.New("the param filename is not set")
 	}

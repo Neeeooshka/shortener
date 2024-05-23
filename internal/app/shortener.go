@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/auth"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
@@ -42,15 +45,58 @@ func (a *shortenerApp) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 }
 
+func (a *shortenerApp) UserUrlsHandler(w http.ResponseWriter, r *http.Request) {
+
+	ck, err := r.Cookie("userID")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	userID, err := auth.GetUserID(ck.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	links := a.storage.GetUserURLs(userID)
+	if len(links) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	type userLink struct {
+		ShortLink string `json:"short_url"`
+		FullLink  string `json:"original_url"`
+	}
+
+	userLinks := make([]userLink, 0, len(links))
+
+	for _, e := range links {
+		userLinks = append(userLinks, userLink{ShortLink: a.GetShortURL(e.ShortLink), FullLink: e.FullLink})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(&userLinks)
+}
+
 func (a *shortenerApp) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	userID, err := a.getUserID(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	shortLink := a.GenerateShortLink()
-	err = a.storage.Add(shortLink, string(body))
+	err = a.storage.Add(shortLink, string(body), userID)
 	var ce *postgres.ConflictError
 	if err != nil {
 		if errors.As(err, &ce) {
@@ -67,6 +113,7 @@ func (a *shortenerApp) ShortenerHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -81,10 +128,20 @@ func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	shortLink := a.GenerateShortLink()
-	err := a.storage.Add(shortLink, req.URL)
+	userID, err := a.getUserID(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	w.Header().Set("Content-Type", "ShortenerApplication/json")
+	shortLink := a.GenerateShortLink()
+	err = a.storage.Add(shortLink, req.URL, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 
 	resp := struct {
 		Result string `json:"result"`
@@ -108,6 +165,7 @@ func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -125,6 +183,12 @@ func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	userID, err := a.getUserID(w, r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	resp := make([]storage.Batch, 0, len(req))
 
 	for _, e := range req {
@@ -132,12 +196,35 @@ func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.R
 		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, ShortURL: shortLink, Result: a.GetShortURL(shortLink)})
 	}
 
-	if err := a.storage.AddBatch(resp); err != nil {
+	if err := a.storage.AddBatch(resp, userID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "ShortenerApplication/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(&resp)
+}
+
+func (a *shortenerApp) getUserID(w http.ResponseWriter, r *http.Request) (string, error) {
+
+	ck, err := r.Cookie("userID")
+
+	if err != nil || time.Now().Sub(ck.Expires) > 0 {
+		token, err := auth.GenerateToken()
+		if err != nil {
+			return "", err
+		}
+		ck = &http.Cookie{Name: "userID", Value: token, Expires: time.Now().Add(time.Hour * 24 * 365), HttpOnly: true}
+
+		http.SetCookie(w, ck)
+	}
+
+	userID, err := auth.GetUserID(ck.Value)
+
+	if err != nil {
+		return "", err
+	}
+
+	return userID, nil
 }

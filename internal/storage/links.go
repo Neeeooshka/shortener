@@ -3,17 +3,19 @@ package storage
 import "net/http"
 
 type LinkStorage interface {
-	Add(sl, fl string) error
-	AddBatch(b []Batch) error
-	Get(shortLink string) (string, bool)
+	Add(string, string, string) error
+	AddBatch([]Batch, string) error
+	Get(string) (string, bool)
 	Close() error
 	PingHandler(http.ResponseWriter, *http.Request)
+	GetUserURLs(string) []Link
 }
 
 type Link struct {
 	UUID      uint   `json:"uuid"`
 	ShortLink string `json:"short_url"`
 	FullLink  string `json:"original_url"`
+	UserID    string
 }
 
 type Batch struct {
