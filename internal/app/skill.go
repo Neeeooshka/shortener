@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,11 +17,21 @@ import (
 // app инкапсулирует в себя все зависимости и логику приложения
 type skillApp struct {
 	store store.Store
+	// канал для отложенной отправки новых сообщений
+	msgChan chan store.Message
 }
 
 // newApp принимает на вход внешние зависимости приложения и возвращает новый объект app
 func NewSkillApp(s store.Store) *skillApp {
-	return &skillApp{store: s}
+	instance := &skillApp{
+		store:   s,
+		msgChan: make(chan store.Message, 1024), // установим каналу буфер в 1024 сообщения
+	}
+
+	// запустим горутину с фоновым сохранением новых сообщений
+	go instance.flushMessages()
+
+	return instance
 }
 
 func (a *skillApp) AliceSkill(w http.ResponseWriter, r *http.Request) {
@@ -60,26 +71,22 @@ func (a *skillApp) AliceSkill(w http.ResponseWriter, r *http.Request) {
 		username, message := parseSendCommand(req.Request.Command)
 
 		// найдём внутренний идентификатор адресата по его логину
-		recipientID, err := a.store.FindRecipient(ctx, username)
+		recepientID, err := a.store.FindRecipient(ctx, username)
 		if err != nil {
-			log.Debug("cannot find recipient by username", log.String("username", username), log.Error(err))
+			log.Debug("cannot find recepient by username", log.String("username", username), log.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		// сохраняем новое сообщение в СУБД, после успешного сохранения оно станет доступно для прослушивания получателем
-		err = a.store.SaveMessage(ctx, recipientID, store.Message{
-			Sender:  req.Session.User.UserID,
-			Time:    time.Now(),
-			Payload: message,
-		})
-		if err != nil {
-			log.Debug("cannot save message", log.String("recipient", recipientID), log.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		// отправим сообщение в очередь на сохранение
+		a.msgChan <- store.Message{
+			Sender:    req.Session.User.UserID,
+			Recepient: recepientID,
+			Time:      time.Now(),
+			Payload:   message,
 		}
 
-		// Оповестим отправителя об успешности операции
+		// оповестим отправителя об успешности операции
 		text = "Сообщение успешно отправлено"
 
 	// пользователь попросил прочитать сообщение
@@ -196,4 +203,37 @@ func parseSendCommand(_ string) (string, string) {
 
 func parseRegisterCommand(_ string) string {
 	return "alice"
+}
+
+// flushMessages постоянно сохраняет несколько сообщений в хранилище с определённым интервалом
+func (a *skillApp) flushMessages() {
+
+	log := zap.Log
+
+	// будем сохранять сообщения, накопленные за последние 10 секунд
+	ticker := time.NewTicker(10 * time.Second)
+
+	var messages []store.Message
+
+	for {
+		select {
+		case msg := <-a.msgChan:
+			// добавим сообщение в слайс для последующего сохранения
+			messages = append(messages, msg)
+		case <-ticker.C:
+			// подождём, пока придёт хотя бы одно сообщение
+			if len(messages) == 0 {
+				continue
+			}
+			// сохраним все пришедшие сообщения одновременно
+			err := a.store.SaveMessages(context.TODO(), messages...)
+			if err != nil {
+				log.Debug("cannot save messages", log.Error(err))
+				// не будем стирать сообщения, попробуем отправить их чуть позже
+				continue
+			}
+			// сотрём успешно отосланные сообщения
+			messages = nil
+		}
+	}
 }
