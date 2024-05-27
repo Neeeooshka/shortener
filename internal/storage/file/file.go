@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 
@@ -17,11 +18,14 @@ type Links struct {
 
 func (l *Links) Add(sl, fl, userID string) (err error) {
 
-	newLink := storage.Link{UserID: userID, ShortLink: sl, FullLink: fl}
+	newLink := storage.Link{UserID: userID, ShortLink: sl, FullLink: fl, Deleted: false}
 	l.links = append(l.links, newLink)
 
 	if l.fileStorage != nil {
-		err = json.NewEncoder(l.fileStorage).Encode(newLink)
+		err := json.NewEncoder(l.fileStorage).Encode(newLink)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -38,13 +42,13 @@ func (l *Links) AddBatch(b []storage.Batch, userID string) error {
 	return nil
 }
 
-func (l *Links) Get(shortLink string) (string, bool) {
+func (l *Links) Get(shortLink string) (storage.Link, bool) {
 	for _, link := range l.links {
 		if link.ShortLink == shortLink {
-			return link.FullLink, true
+			return link, true
 		}
 	}
-	return "", false
+	return storage.Link{}, false
 }
 
 func (l *Links) Close() error {
@@ -72,6 +76,38 @@ func (l *Links) GetUserURLs(userID string) []storage.Link {
 	}
 
 	return links
+}
+
+func (l *Links) DeleteUserURLs(userID string, links []string) error {
+
+	for id, link := range l.links {
+		for _, userLink := range links {
+			if link.UserID == userID && link.ShortLink == userLink {
+				l.links[id].Deleted = true
+			}
+		}
+	}
+
+	if l.fileStorage != nil {
+		_, err := l.fileStorage.Seek(0, io.SeekStart)
+		if err != nil {
+			return err
+		}
+
+		err = l.fileStorage.Truncate(0)
+		if err != nil {
+			return err
+		}
+
+		for _, link := range l.links {
+			err := json.NewEncoder(l.fileStorage).Encode(link)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (l *Links) SetLinksFromFile(filename string) error {

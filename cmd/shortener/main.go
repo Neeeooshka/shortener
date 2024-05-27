@@ -48,6 +48,7 @@ func main() {
 	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
 	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
 	router.Get("/api/user/urls", logger.IncludeLogger(appInstance.UserUrlsHandler, zapLoger))
+	router.Delete("/api/user/urls", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.DeleteUserUrlsHandler, gzip.NewGzipCompressor()), zapLoger))
 
 	// create HTTP Server
 	http.ListenAndServe(appInstance.Options.GetServer(), router)

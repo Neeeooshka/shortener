@@ -35,9 +35,13 @@ func NewShortenerAppInstance(opt config.Options, s storage.LinkStorage) *shorten
 }
 
 func (a *shortenerApp) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
-	link, _ := strings.CutPrefix(r.URL.String(), "/")
-	if fullLink, ok := a.storage.Get(link); ok {
-		w.Header().Set("Location", fullLink)
+	linkID, _ := strings.CutPrefix(r.URL.String(), "/")
+	if link, ok := a.storage.Get(linkID); ok {
+		if link.Deleted {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
+		w.Header().Set("Location", link.FullLink)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
@@ -74,6 +78,37 @@ func (a *shortenerApp) UserUrlsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&userLinks)
+}
+
+func (a *shortenerApp) DeleteUserUrlsHandler(w http.ResponseWriter, r *http.Request) {
+
+	ck, err := r.Cookie("userID")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	userID, err := auth.GetUserID(ck.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var req []string
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//TODO: add fanIN workers
+	err = a.storage.DeleteUserURLs(userID, req)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (a *shortenerApp) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
@@ -156,11 +191,6 @@ func (a *shortenerApp) APIShortenerHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
 	type reqURL struct {
 		ID  string `json:"correlation_id"`

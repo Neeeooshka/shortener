@@ -26,7 +26,7 @@ func (l *Postgres) Add(sl, fl, userID string) error {
 	var shortLink string
 	var isNew bool
 
-	row := l.DB.QueryRow("WITH ins AS (\n    INSERT INTO shortener_links (short_url, original_url, uuid)\n    VALUES ($1, $2, $3)\n    ON CONFLICT (original_url) DO NOTHING\n        RETURNING short_url\n)\nSELECT short_url, 1 as is_new FROM ins\nUNION  ALL\nSELECT short_url, 0 as is_new FROM shortener_links WHERE original_url = $2\nLIMIT 1", sl, fl, userID)
+	row := l.DB.QueryRow("WITH ins AS (\n    INSERT INTO shortener_links (short_url, original_url, user_id)\n    VALUES ($1, $2, $3)\n    ON CONFLICT (original_url) DO NOTHING\n        RETURNING short_url\n)\nSELECT short_url, 1 as is_new FROM ins\nUNION  ALL\nSELECT short_url, 0 as is_new FROM shortener_links WHERE original_url = $2\nLIMIT 1", sl, fl, userID)
 	err := row.Scan(&shortLink, &isNew)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (l *Postgres) AddBatch(b []storage.Batch, userID string) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url, uuid) VALUES ($1,$2,$3)\nON CONFLICT (original_url) DO NOTHING")
+	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url, user_id) VALUES ($1,$2,$3)\nON CONFLICT (original_url) DO NOTHING")
 	if err != nil {
 		return err
 	}
@@ -66,14 +66,14 @@ func (l *Postgres) AddBatch(b []storage.Batch, userID string) error {
 	return tx.Commit()
 }
 
-func (l *Postgres) Get(shortLink string) (string, bool) {
+func (l *Postgres) Get(shortLink string) (storage.Link, bool) {
 
-	var link string
+	link := storage.Link{}
 
-	row := l.DB.QueryRow("SELECT original_url FROM shortener_links WHERE short_url = $1", shortLink)
-	err := row.Scan(&link)
+	row := l.DB.QueryRow("SELECT original_url, short_url, user_id, deleted FROM shortener_links WHERE short_url = $1", shortLink)
+	err := row.Scan(&link.FullLink, &link.ShortLink, &link.UserID, &link.Deleted)
 	if err != nil {
-		return "", false
+		return storage.Link{}, false
 	}
 
 	return link, true
@@ -83,7 +83,7 @@ func (l *Postgres) GetUserURLs(userID string) []storage.Link {
 
 	var links []storage.Link
 
-	rows, err := l.DB.Query("SELECT short_url, original_url FROM shortener_links WHERE uuid = $1", userID)
+	rows, err := l.DB.Query("SELECT short_url, original_url FROM shortener_links WHERE user_id = $1", userID)
 	if err == nil && rows.Err() == nil {
 		for rows.Next() {
 
@@ -97,6 +97,13 @@ func (l *Postgres) GetUserURLs(userID string) []storage.Link {
 	}
 
 	return links
+}
+
+func (l *Postgres) DeleteUserURLs(userID string, linksID []string) error {
+
+	_, err := l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", userID, linksID)
+
+	return err
 }
 
 func (l *Postgres) Close() error {
@@ -113,7 +120,7 @@ func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Postgres) initStructForLinks() (err error) {
-	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    id SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character varying(250) NOT NULL,\n    uuid character(32) NULL,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
+	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    id SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character varying(250) NOT NULL,\n    user_id character(32) NULL,\n    deleted boolean NOT NULL DEFAULT false,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
 	return err
 }
 
