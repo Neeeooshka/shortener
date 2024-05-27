@@ -16,8 +16,8 @@ type Links struct {
 }
 
 func (l *Links) Add(sl, fl, userID string) (err error) {
-	uuid := uint(len(l.links))
-	newLink := storage.Link{UserID: userID, ShortLink: sl, FullLink: fl, UUID: uuid + 1}
+
+	newLink := storage.Link{UserID: userID, ShortLink: sl, FullLink: fl}
 	l.links = append(l.links, newLink)
 
 	if l.fileStorage != nil {
