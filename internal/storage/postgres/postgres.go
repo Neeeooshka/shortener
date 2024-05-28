@@ -4,10 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"sync"
+
+	"github.com/Neeeooshka/alice-skill.git/pkg/semaphore"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+var wg *sync.WaitGroup
+var waitWrite *sync.Once
+var sem = semaphore.NewSemaphore(1)
 
 type ConflictError struct {
 	ShortLink string
@@ -18,7 +25,8 @@ func (e *ConflictError) Error() string {
 }
 
 type Postgres struct {
-	DB *sql.DB
+	DB             *sql.DB
+	deleteLinksChs []chan storage.UserLinks
 }
 
 func (l *Postgres) Add(sl, fl, userID string) error {
@@ -99,11 +107,90 @@ func (l *Postgres) GetUserURLs(userID string) []storage.Link {
 	return links
 }
 
-func (l *Postgres) DeleteUserURLs(userID string, linksID []string) error {
+func (l *Postgres) DeleteUserURLs(ul storage.UserLinks) error {
 
-	_, err := l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", userID, linksID)
+	dataCh := make(chan storage.UserLinks)
+	go func() {
+		waitWrite.Do(func() {
+			wg = new(sync.WaitGroup)
+			go func() {
+				wg.Wait()
+				go func() {
+					sem.Acquire()
+					defer sem.Release()
+					for ls := range dataCh {
+						_, _ = l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", ls.UserID, ls.LinksID)
+					}
+				}()
+				waitWrite = new(sync.Once)
+			}()
+		})
+		wg.Add(1)
+		defer wg.Done()
+		defer close(dataCh)
+		dataCh <- ul
+	}()
 
-	return err
+	// конвеер
+	ch := len(l.deleteLinksChs)
+	l.deleteLinksChs[ch] = make(chan storage.UserLinks)
+	go func() {
+		defer close(l.deleteLinksChs[ch])
+		for data := range dataCh {
+			l.deleteLinksChs[ch] <- data
+		}
+	}()
+
+	// объединение результата fanIn
+	finalCh := make(chan storage.UserLinks)
+
+	for _, ch := range l.deleteLinksChs {
+		chCopy := ch
+
+		go func() {
+
+			for data := range chCopy {
+				finalCh <- data
+			}
+		}()
+
+	}
+	go func() {
+		wg.Wait()
+		close(finalCh)
+	}()
+
+	// обработка результата
+	var wg1 sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		sem.Acquire()
+		defer wg.Done()
+		defer sem.Release()
+		for _ = range finalCh {
+			//_, _ = l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", ul.UserID, ul.LinksID)
+		}
+	}()
+	wg1.Wait()
+
+	return nil
+}
+
+func (l *Postgres) asda() chan int {
+
+	resCh := make(chan int)
+
+	go func() {
+
+		defer close(resCh)
+
+		for data := range l.deleteLinksChs {
+			resCh <- data
+		}
+	}()
+
+	return resCh
 }
 
 func (l *Postgres) Close() error {

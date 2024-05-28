@@ -77,11 +77,25 @@ func (mr *MockLinkStorageMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockLinkStorage)(nil).Close))
 }
 
+// DeleteUserURLs mocks base method.
+func (m *MockLinkStorage) DeleteUserURLs(arg0 string, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUserURLs", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUserURLs indicates an expected call of DeleteUserURLs.
+func (mr *MockLinkStorageMockRecorder) DeleteUserURLs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserURLs", reflect.TypeOf((*MockLinkStorage)(nil).DeleteUserURLs), arg0, arg1)
+}
+
 // Get mocks base method.
-func (m *MockLinkStorage) Get(arg0 string) (string, bool) {
+func (m *MockLinkStorage) Get(arg0 string) (storage.Link, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(storage.Link)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }

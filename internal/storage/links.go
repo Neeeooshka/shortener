@@ -9,7 +9,7 @@ type LinkStorage interface {
 	Close() error
 	PingHandler(http.ResponseWriter, *http.Request)
 	GetUserURLs(string) []Link
-	DeleteUserURLs(string, []string) error
+	DeleteUserURLs(UserLinks) error
 }
 
 type Link struct {
@@ -24,4 +24,9 @@ type Batch struct {
 	URL      string `json:"-"`
 	ShortURL string `json:"-"`
 	Result   string `json:"short_url"`
+}
+
+type UserLinks struct {
+	LinksID []string
+	UserID  string
 }

@@ -94,17 +94,16 @@ func (a *shortenerApp) DeleteUserUrlsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var req []string
+	req := storage.UserLinks{UserID: userID}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req.LinksID); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	//TODO: add fanIN workers
-	err = a.storage.DeleteUserURLs(userID, req)
+	err = a.storage.DeleteUserURLs(req)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
