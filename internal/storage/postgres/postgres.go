@@ -109,7 +109,7 @@ func (l *Postgres) DeleteUserURLs(uls []storage.UserLinks) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("UPDATE shortener_links set deleted = true WHERE id = ANY($1) AND user_id = $2")
+	stmt, err := tx.Prepare("UPDATE shortener_links set deleted = true WHERE short_url = ANY($1) AND user_id = $2")
 	if err != nil {
 		return err
 	}
