@@ -78,12 +78,16 @@ func (l *Links) GetUserURLs(userID string) []storage.Link {
 	return links
 }
 
-func (l *Links) DeleteUserURLs(ul storage.UserLinks) error {
+func (l *Links) DeleteUserURLs(uls []storage.UserLinks) error {
 
 	for id, link := range l.links {
-		for _, userLink := range ul.LinksID {
-			if link.UserID == ul.UserID && link.ShortLink == userLink {
-				l.links[id].Deleted = true
+		for _, ul := range uls {
+			if link.UserID == ul.UserID {
+				for _, shortLink := range ul.LinksID {
+					if link.ShortLink == shortLink {
+						l.links[id].Deleted = true
+					}
+				}
 			}
 		}
 	}

@@ -14,12 +14,14 @@ import (
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/thanhpk/randstr"
 )
 
 type shortenerApp struct {
-	Options config.Options
-	storage storage.LinkStorage
+	Options        config.Options
+	storage        storage.LinkStorage
+	deleteUrlsChan chan storage.UserLinks
 }
 
 func (a *shortenerApp) GetShortURL(id string) string {
@@ -31,7 +33,12 @@ func (a *shortenerApp) GenerateShortLink() string {
 }
 
 func NewShortenerAppInstance(opt config.Options, s storage.LinkStorage) *shortenerApp {
-	return &shortenerApp{Options: opt, storage: s}
+
+	instance := &shortenerApp{Options: opt, storage: s, deleteUrlsChan: make(chan storage.UserLinks, 1024)}
+
+	go instance.flushDeleteLinks()
+
+	return instance
 }
 
 func (a *shortenerApp) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
@@ -94,18 +101,14 @@ func (a *shortenerApp) DeleteUserUrlsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	req := storage.UserLinks{UserID: userID}
+	var shortURLs []string
 
-	if err := json.NewDecoder(r.Body).Decode(&req.LinksID); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&shortURLs); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = a.storage.DeleteUserURLs(req)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	go a.asyncDeleteUrls(userID, shortURLs)
 
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -247,4 +250,46 @@ func (a *shortenerApp) getUserID(w http.ResponseWriter, r *http.Request) (string
 	}
 
 	return userID, nil
+}
+
+func (a *shortenerApp) asyncDeleteUrls(userID string, shortURLs []string) {
+
+	batchSize := 100
+
+	for start := 0; start < len(shortURLs); start += batchSize {
+
+		end := start + batchSize
+
+		if end > len(shortURLs) {
+			end = len(shortURLs)
+		}
+		a.deleteUrlsChan <- storage.UserLinks{UserID: userID, LinksID: shortURLs[start:end]}
+	}
+}
+
+func (a *shortenerApp) flushDeleteLinks() {
+
+	ticker := time.NewTicker(time.Second * 10)
+
+	var userLinks []storage.UserLinks
+
+	for {
+		select {
+		case userLink := <-a.deleteUrlsChan:
+			userLinks = append(userLinks, userLink)
+		case <-ticker.C:
+			if len(userLinks) == 0 {
+				continue
+			}
+
+			err := a.storage.DeleteUserURLs(userLinks)
+
+			if err != nil {
+				logger, _ := zap.NewZapLogger("debug")
+				logger.Debug("cannot delete user links", logger.Error(err))
+			}
+
+			userLinks = nil
+		}
+	}
 }

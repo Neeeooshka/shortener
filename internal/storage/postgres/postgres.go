@@ -3,18 +3,10 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"net/http"
-	"sync"
-
-	"github.com/Neeeooshka/alice-skill.git/pkg/semaphore"
-
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"net/http"
 )
-
-var wg *sync.WaitGroup
-var waitWrite *sync.Once
-var sem = semaphore.NewSemaphore(1)
 
 type ConflictError struct {
 	ShortLink string
@@ -25,8 +17,7 @@ func (e *ConflictError) Error() string {
 }
 
 type Postgres struct {
-	DB             *sql.DB
-	deleteLinksChs []chan storage.UserLinks
+	DB *sql.DB
 }
 
 func (l *Postgres) Add(sl, fl, userID string) error {
@@ -107,90 +98,31 @@ func (l *Postgres) GetUserURLs(userID string) []storage.Link {
 	return links
 }
 
-func (l *Postgres) DeleteUserURLs(ul storage.UserLinks) error {
+func (l *Postgres) DeleteUserURLs(uls []storage.UserLinks) error {
 
-	dataCh := make(chan storage.UserLinks)
-	go func() {
-		waitWrite.Do(func() {
-			wg = new(sync.WaitGroup)
-			go func() {
-				wg.Wait()
-				go func() {
-					sem.Acquire()
-					defer sem.Release()
-					for ls := range dataCh {
-						_, _ = l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", ls.UserID, ls.LinksID)
-					}
-				}()
-				waitWrite = new(sync.Once)
-			}()
-		})
-		wg.Add(1)
-		defer wg.Done()
-		defer close(dataCh)
-		dataCh <- ul
-	}()
+	ctx, cansel := context.WithCancel(context.Background())
+	defer cansel()
 
-	// конвеер
-	ch := len(l.deleteLinksChs)
-	l.deleteLinksChs[ch] = make(chan storage.UserLinks)
-	go func() {
-		defer close(l.deleteLinksChs[ch])
-		for data := range dataCh {
-			l.deleteLinksChs[ch] <- data
-		}
-	}()
+	tx, err := l.DB.BeginTx(ctx, nil)
 
-	// объединение результата fanIn
-	finalCh := make(chan storage.UserLinks)
-
-	for _, ch := range l.deleteLinksChs {
-		chCopy := ch
-
-		go func() {
-
-			for data := range chCopy {
-				finalCh <- data
-			}
-		}()
-
+	if err != nil {
+		return err
 	}
-	go func() {
-		wg.Wait()
-		close(finalCh)
-	}()
 
-	// обработка результата
-	var wg1 sync.WaitGroup
+	stmt, err := tx.Prepare("UPDATE shortener_links set deleted = true WHERE id IN ($1) AND user_id = $2")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
 
-	wg.Add(1)
-	go func() {
-		sem.Acquire()
-		defer wg.Done()
-		defer sem.Release()
-		for _ = range finalCh {
-			//_, _ = l.DB.Exec("UPDATE shortener_links SET deleted = true WHERE user_id = $1 and short_url in ($2)", ul.UserID, ul.LinksID)
+	for _, ul := range uls {
+		_, err := stmt.Exec(ul.LinksID, ul.UserID)
+		if err != nil {
+			return err
 		}
-	}()
-	wg1.Wait()
+	}
 
-	return nil
-}
-
-func (l *Postgres) asda() chan int {
-
-	resCh := make(chan int)
-
-	go func() {
-
-		defer close(resCh)
-
-		for data := range l.deleteLinksChs {
-			resCh <- data
-		}
-	}()
-
-	return resCh
+	return tx.Commit()
 }
 
 func (l *Postgres) Close() error {
@@ -207,7 +139,7 @@ func (l *Postgres) PingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Postgres) initStructForLinks() (err error) {
-	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    id SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character varying(250) NOT NULL,\n    user_id character(32) NULL,\n    deleted boolean NOT NULL DEFAULT false,\n    PRIMARY KEY (uuid),\n    UNIQUE (original_url)\n )")
+	_, err = l.DB.Exec("CREATE TABLE IF NOT EXISTS shortener_links (\n    id SERIAL,\n    short_url character(8) NOT NULL,\n    original_url character varying(250) NOT NULL,\n    user_id character(32) NULL,\n    deleted boolean NOT NULL DEFAULT false,\n    PRIMARY KEY (id),\n    UNIQUE (original_url)\n )")
 	return err
 }
 

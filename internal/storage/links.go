@@ -9,7 +9,7 @@ type LinkStorage interface {
 	Close() error
 	PingHandler(http.ResponseWriter, *http.Request)
 	GetUserURLs(string) []Link
-	DeleteUserURLs(UserLinks) error
+	DeleteUserURLs([]UserLinks) error
 }
 
 type Link struct {
