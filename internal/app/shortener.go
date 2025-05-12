@@ -57,19 +57,13 @@ func (a *shortenerApp) ExpanderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *shortenerApp) UserUrlsHandler(w http.ResponseWriter, r *http.Request) {
-	// Если кука не установлена, значит пользователь не создавал ни одной ссылки
-	ck, err := r.Cookie("userID")
-	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	// Кука установлена, но токен недействителен
-	userID, err := auth.GetUserID(ck.Value)
+
+	userID, err := a.getUserID(w, r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// Кука установлена, но ссылок у пользователя нет
+
 	links := a.storage.GetUserURLs(userID)
 	if len(links) == 0 {
 		w.WriteHeader(http.StatusNoContent)
