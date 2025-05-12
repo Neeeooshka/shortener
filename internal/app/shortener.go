@@ -83,13 +83,7 @@ func (a *shortenerApp) UserUrlsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *shortenerApp) DeleteUserUrlsHandler(w http.ResponseWriter, r *http.Request) {
 
-	ck, err := r.Cookie("userID")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := auth.GetUserID(ck.Value)
+	userID, err := a.getUserID(w, r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
