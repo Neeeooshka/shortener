@@ -5,6 +5,7 @@
 package storage
 
 import (
+	context "context"
 	http "net/http"
 	reflect "reflect"
 
@@ -50,17 +51,17 @@ func (mr *MockLinkStorageMockRecorder) Add(arg0, arg1, arg2 interface{}) *gomock
 }
 
 // AddBatch mocks base method.
-func (m *MockLinkStorage) AddBatch(arg0 []storage.Batch, arg1 string) error {
+func (m *MockLinkStorage) AddBatch(arg0 context.Context, arg1 []storage.Batch, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddBatch", arg0, arg1)
+	ret := m.ctrl.Call(m, "AddBatch", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddBatch indicates an expected call of AddBatch.
-func (mr *MockLinkStorageMockRecorder) AddBatch(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockLinkStorageMockRecorder) AddBatch(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockLinkStorage)(nil).AddBatch), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddBatch", reflect.TypeOf((*MockLinkStorage)(nil).AddBatch), arg0, arg1, arg2)
 }
 
 // Close mocks base method.
