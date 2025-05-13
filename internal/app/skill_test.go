@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ func TestWebhook(t *testing.T) {
 		Return(messages, nil)
 
 	// создадим экземпляр приложения и передадим ему «хранилище»
-	appInstance := newApp(s)
+	appInstance := NewSkillApp(s)
 
 	handler := http.HandlerFunc(appInstance.AliceSkill)
 	srv := httptest.NewServer(handler)
@@ -137,7 +137,7 @@ func TestGzipCompression(t *testing.T) {
 		MaxTimes(2)
 
 	// создадим экземпляр приложения и передадим ему «хранилище»
-	appInstance := newApp(s)
+	appInstance := NewSkillApp(s)
 
 	handler := http.HandlerFunc(compressor.IncludeCompressor(appInstance.AliceSkill, gz.NewGzipCompressor()))
 	srv := httptest.NewServer(handler)

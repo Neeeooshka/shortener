@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"net/http"
+	"time"
+
+	"github.com/Neeeooshka/alice-skill.git/internal/app"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
@@ -36,7 +39,7 @@ func main() {
 	}
 	defer store.Close()
 
-	appInstance := newAppInstance(opt, store)
+	appInstance := app.NewShortenerAppInstance(opt, store)
 
 	// create router
 	router := chi.NewRouter()
@@ -45,9 +48,11 @@ func main() {
 	router.Post("/api/shorten/batch", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.APIBatchShortenerHandler, gzip.NewGzipCompressor()), zapLoger))
 	router.Get("/{id}", logger.IncludeLogger(appInstance.ExpanderHandler, zapLoger))
 	router.Get("/ping", logger.IncludeLogger(store.PingHandler, zapLoger))
+	router.Get("/api/user/urls", logger.IncludeLogger(appInstance.UserUrlsHandler, zapLoger))
+	router.Delete("/api/user/urls", logger.IncludeLogger(compressor.IncludeCompressor(appInstance.DeleteUserUrlsHandler, gzip.NewGzipCompressor()), zapLoger))
 
 	// create HTTP Server
-	http.ListenAndServe(appInstance.options.GetServer(), router)
+	http.ListenAndServe(appInstance.Options.GetServer(), router)
 }
 
 // init options
@@ -78,6 +83,8 @@ func getOptions() config.Options {
 	if cfg.DB != "" {
 		opt.DB.Set(cfg.DB)
 	}
+
+	opt.FlushDBInterval = time.Second * 10
 
 	return opt
 }
