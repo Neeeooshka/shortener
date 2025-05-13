@@ -38,10 +38,7 @@ func (l *Postgres) Add(sl, fl, userID string) error {
 	return nil
 }
 
-func (l *Postgres) AddBatch(b []storage.Batch, userID string) error {
-
-	ctx, cansel := context.WithCancel(context.Background())
-	defer cansel()
+func (l *Postgres) AddBatch(ctx context.Context, b []storage.Batch, userID string) error {
 
 	tx, err := l.DB.BeginTx(ctx, nil)
 
@@ -49,16 +46,23 @@ func (l *Postgres) AddBatch(b []storage.Batch, userID string) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO shortener_links (short_url, original_url, user_id) VALUES ($1,$2,$3)\nON CONFLICT (original_url) DO NOTHING")
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO shortener_links (short_url, original_url, user_id) VALUES ($1,$2,$3)\nON CONFLICT (original_url) DO NOTHING")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	for _, e := range b {
-		_, err := stmt.Exec(e.ShortURL, e.URL, userID)
-		if err != nil {
-			return err
+		select {
+		case <-ctx.Done():
+			tx.Rollback()
+			return ctx.Err()
+		default:
+			_, err := stmt.ExecContext(ctx, e.ShortURL, e.URL, userID)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
 	}
 

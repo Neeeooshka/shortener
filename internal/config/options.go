@@ -5,13 +5,15 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Options struct {
-	ServerAddress ServerAddress
-	BaseURL       BaseURL
-	FileStorage   FileStorage
-	DB            DB
+	ServerAddress   ServerAddress
+	BaseURL         BaseURL
+	FileStorage     FileStorage
+	DB              DB
+	FlushDBInterval time.Duration
 }
 
 func (o *Options) GetServer() string {

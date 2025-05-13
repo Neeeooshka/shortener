@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -31,7 +32,7 @@ func (l *Links) Add(sl, fl, userID string) (err error) {
 	return err
 }
 
-func (l *Links) AddBatch(b []storage.Batch, userID string) error {
+func (l *Links) AddBatch(ctx context.Context, b []storage.Batch, userID string) error {
 	for _, e := range b {
 		err := l.Add(e.ShortURL, e.URL, userID)
 		if err != nil {
@@ -80,15 +81,20 @@ func (l *Links) GetUserURLs(userID string) []storage.Link {
 
 func (l *Links) DeleteUserURLs(uls []storage.UserLinks) error {
 
-	for id, link := range l.links {
-		for _, ul := range uls {
-			if link.UserID == ul.UserID {
-				for _, shortLink := range ul.LinksID {
-					if link.ShortLink == shortLink {
-						l.links[id].Deleted = true
-					}
-				}
-			}
+	ulMap := make(map[string]string)
+
+	for _, ul := range uls {
+		for _, shortLink := range ul.LinksID {
+			ulMap[shortLink] = ul.UserID
+		}
+	}
+
+	for i, link := range l.links {
+
+		userID, ok := ulMap[link.ShortLink]
+
+		if ok && userID == link.UserID {
+			l.links[i].Deleted = true
 		}
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"time"
 
 	"github.com/Neeeooshka/alice-skill.git/internal/app"
 
@@ -82,6 +83,8 @@ func getOptions() config.Options {
 	if cfg.DB != "" {
 		opt.DB.Set(cfg.DB)
 	}
+
+	opt.FlushDBInterval = time.Second * 10
 
 	return opt
 }

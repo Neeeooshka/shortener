@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"io"
 	"net/http"
 	"strings"
@@ -14,7 +16,6 @@ import (
 	"github.com/Neeeooshka/alice-skill.git/internal/config"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage"
 	"github.com/Neeeooshka/alice-skill.git/internal/storage/postgres"
-	"github.com/Neeeooshka/alice-skill.git/pkg/logger/zap"
 	"github.com/thanhpk/randstr"
 )
 
@@ -22,6 +23,7 @@ type shortenerApp struct {
 	Options        config.Options
 	storage        storage.LinkStorage
 	deleteUrlsChan chan storage.UserLinks
+	context        ctx
 }
 
 func (a *shortenerApp) GetShortURL(id string) string {
@@ -34,7 +36,14 @@ func (a *shortenerApp) GenerateShortLink() string {
 
 func NewShortenerAppInstance(opt config.Options, s storage.LinkStorage) *shortenerApp {
 
-	instance := &shortenerApp{Options: opt, storage: s, deleteUrlsChan: make(chan storage.UserLinks, 1024)}
+	c, cancel := context.WithCancel(context.Background())
+
+	instance := &shortenerApp{
+		Options:        opt,
+		storage:        s,
+		deleteUrlsChan: make(chan storage.UserLinks, 1024),
+		context:        ctx{ctx: c, cancel: cancel},
+	}
 
 	go instance.flushDeleteLinks()
 
@@ -207,7 +216,7 @@ func (a *shortenerApp) APIBatchShortenerHandler(w http.ResponseWriter, r *http.R
 		resp = append(resp, storage.Batch{ID: e.ID, URL: e.URL, ShortURL: shortLink, Result: a.GetShortURL(shortLink)})
 	}
 
-	if err := a.storage.AddBatch(resp, userID); err != nil {
+	if err := a.storage.AddBatch(r.Context(), resp, userID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -257,7 +266,7 @@ func (a *shortenerApp) asyncDeleteUrls(userID string, shortURLs []string) {
 
 func (a *shortenerApp) flushDeleteLinks() {
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(a.Options.FlushDBInterval)
 
 	var userLinks []storage.UserLinks
 
@@ -266,18 +275,30 @@ func (a *shortenerApp) flushDeleteLinks() {
 		case userLink := <-a.deleteUrlsChan:
 			userLinks = append(userLinks, userLink)
 		case <-ticker.C:
-			if len(userLinks) == 0 {
-				continue
-			}
-
-			err := a.storage.DeleteUserURLs(userLinks)
-
-			if err != nil {
-				logger, _ := zap.NewZapLogger("debug")
-				logger.Debug("cannot delete user links", logger.Error(err))
-			}
-
+			a.updateDeletedFlag(userLinks)
 			userLinks = nil
+		case <-a.context.ctx.Done():
+			a.updateDeletedFlag(userLinks)
+			return
 		}
 	}
+}
+
+func (a *shortenerApp) updateDeletedFlag(userLinks []storage.UserLinks) {
+
+	if len(userLinks) == 0 {
+		return
+	}
+
+	err := a.storage.DeleteUserURLs(userLinks)
+
+	if err != nil {
+		logger, _ := zap.NewZapLogger("debug")
+		logger.Debug("cannot delete user links", logger.Error(err))
+	}
+}
+
+type ctx struct {
+	ctx    context.Context
+	cancel context.CancelFunc
 }

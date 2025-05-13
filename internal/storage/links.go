@@ -1,10 +1,13 @@
 package storage
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 type LinkStorage interface {
 	Add(string, string, string) error
-	AddBatch([]Batch, string) error
+	AddBatch(context.Context, []Batch, string) error
 	Get(string) (Link, bool)
 	Close() error
 	PingHandler(http.ResponseWriter, *http.Request)
